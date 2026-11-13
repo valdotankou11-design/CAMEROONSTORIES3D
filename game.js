@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id);
 
 // ===== SAUVEGARDE LOCALE (LOCALSTORAGE)
-const SAVE_KEY='cameroun_stories_pro_v3';
+const SAVE_KEY='cameroun_stories_payback_v4';
 const defaultSave=()=>({
   cash:500,hp:100,armor:50,missionIdx:0,weapons:['pistol'],curWeapon:'pistol',
   px:3*CS+18,pz:3*CS+12
@@ -188,26 +188,27 @@ window.buyItem=function(id){
   }else{showToast('❌ Pas assez de FCFA !');playTone(160,0.2,'sawtooth');return;}
   writeSave();
 };
-function switchWeapon(){
+window.switchWeapon=function(){
   if(SAVE.weapons.length<2){showToast('Débloque de nouvelles armes à la boutique !');return;}
   const idx=(SAVE.weapons.indexOf(SAVE.curWeapon)+1)%SAVE.weapons.length;
   SAVE.curWeapon=SAVE.weapons[idx];
   updateWeaponHUD();
-  const names={pistol:'🔫 Pistolet 9mm',smg:'🔥 Mitraillette Uzi',rifle:'🎯 Fusil AK-47'};
-  showToast('Arme : '+names[SAVE.curWeapon]);
-}
+  const names={pistol:'🔫 Pistolet 9mm ↻',smg:'🔥 Mitraillette Uzi ↻',rifle:'🎯 Fusil AK-47 ↻'};
+  showToast('Arme équipée : '+names[SAVE.curWeapon]);
+};
 function updateWeaponHUD(){
-  const names={pistol:'🔫 Pistolet 9mm',smg:'🔥 Mitraillette Uzi',rifle:'🎯 Fusil AK-47'};
-  $('weapon-info').textContent=names[SAVE.curWeapon]||'🔫 Pistolet 9mm';
+  const names={pistol:'🔫 Pistolet 9mm ↻',smg:'🔥 Mitraillette Uzi ↻',rifle:'🎯 Fusil AK-47 ↻'};
+  $('weapon-info').textContent=names[SAVE.curWeapon]||'🔫 Pistolet 9mm ↻';
   P.m.userData.gun.visible=!P.car;
 }
 
-// ===== ENTRÉES CLAVIER & TACTILE (DIRECTION JOYSTICK 100% FIDÈLE)
-const KB={},B={fire:0,run:0,gas:0,brake:0,nitro:0},jv={m:0,x:0,y:0};
+// ===== ENTRÉES CLAVIER & TACTILE STYLE PAYBACK 2
+const KB={},B={fire:0,run:0,gas:0,brake:0},jv={m:0,x:0,y:0};
+let runTapTime=0;
+
 addEventListener('keydown',e=>{
   KB[e.code]=1;
-  if(e.code==='KeyE'||e.code==='Enter')doAction();
-  if(e.code==='KeyT')talkNearestNPC();
+  if(e.code==='KeyE'||e.code==='Enter')doSmartAction();
   if(e.code==='Tab'){e.preventDefault();switchWeapon();}
   if(e.code==='KeyR')cycleRadio();
   if(e.code==='KeyH'&&P.car)playHorn();
@@ -234,8 +235,7 @@ function getInput(){
     fire:KB.Space||KB.KeyF||B.fire,
     run:KB.ShiftLeft||KB.ShiftRight||B.run,
     gas:KB.KeyW||KB.ArrowUp||B.gas,
-    brake:KB.KeyS||KB.ArrowDown||KB.Space||B.brake,
-    nitro:KB.ShiftLeft||KB.ShiftRight||B.nitro
+    brake:KB.KeyS||KB.ArrowDown||B.brake
   };
 }
 const jz=$('jz'),jb=$('jb'),jk=$('jk'),lz=$('lz');let jid=null,jo=[0,0],lid=null,lp=[0,0];
@@ -263,14 +263,18 @@ document.querySelectorAll('.tbtn').forEach(b=>{
   const k=b.dataset.k;
   b.onpointerdown=e=>{
     e.preventDefault();b.setPointerCapture(e.pointerId);b.classList.add('on');
-    if(k==='act')doAction();
-    else if(k==='wep')switchWeapon();
-    else if(k==='talk')talkNearestNPC();
-    else if(k==='horn')playHorn();
-    else if(k==='jump')doJump();
+    if(k==='act')doSmartAction();
+    else if(k==='run'){B.run=1;runTapTime=performance.now();}
     else B[k]=1;
   };
-  b.onpointerup=b.onpointercancel=()=>{b.classList.remove('on');if(k in B)B[k]=0;};
+  b.onpointerup=b.onpointercancel=()=>{
+    b.classList.remove('on');
+    if(k==='run'){
+      B.run=0;
+      // Appui court (< 220ms) sur le bouton Courir déclenche un Saut / Esquive (logique Payback 2)
+      if(performance.now()-runTapTime<220)doJump();
+    }else if(k in B)B[k]=0;
+  };
 });
 $('btn-how').onclick=()=>{const h=$('how');h.style.display=h.style.display==='block'?'none':'block';};
 $('btn-pause').onclick=togglePause;
@@ -305,7 +309,7 @@ function spawnVehicle(kind,x,z,d){
   const maxHp=kind==='cop'?150:vType==='moto'?60:vType==='vip'?160:120;
   const c={
     m:buildVehicle(col,vType),x,z,h:HD[d],v:0,d,kind,vType,
-    hp:maxHp,maxHp,id:++cid,turned:0,rev:0,st:0,bt:0,deployed:0,smokeT:0
+    hp:maxHp,maxHp,id:++cid,turned:0,rev:0,st:0,bt:0,deployed:0,smokeT:0,revLock:0
   };
   cars.push(c);return c;
 }
@@ -329,7 +333,6 @@ function autoSpawnNPC(){
   peds.push({m,x,z,h:rn(0,6.3),t:rn(1,4),fl:0,dead:0,wk:0,hp:35,profile:prof,lineIdx:R()*prof.lines.length|0,chatCd:0});
 }
 
-// Collision solide joueur/PNJ <-> voitures (impossible de traverser les véhicules)
 function resolvePersonCarCollisions(person,rad=0.65){
   for(const c of cars){
     if(c===P.car)continue;
@@ -351,7 +354,6 @@ function resolvePersonCarCollisions(person,rad=0.65){
   }
 }
 
-// Déploiement réel de policiers / unités BIR à pied depuis les voitures de patrouille
 function deployCopsFromCar(c){
   if(c.deployed||copsOnFoot.length>=6)return;
   c.deployed=1;
@@ -370,17 +372,15 @@ function clearCopsOnFoot(){
   copsOnFoot=[];
 }
 
-function talkNearestNPC(){
-  if(S!=='play'||inside)return;
-  let best=null,bd=7;
+function findNearestNPC(maxD=5.5){
+  let best=null,bd=maxD;
   for(const p of peds){if(!p.dead){const d=Math.hypot(p.x-P.x,p.z-P.z);if(d<bd){bd=d;best=p;}}}
-  if(best){
-    best.h=Math.atan2(P.x-best.x,P.z-best.z);best.t=4;
-    const line=best.fl>0?'Laisse-moi tranquille !':best.profile.lines[best.lineIdx%best.profile.lines.length];
-    best.lineIdx++;
-    showNpcBubble(best.profile.name,line,4.5);
-    playTone(520,0.12,'sine');
-  }else showToast('Approche un habitant pour parler (T / 💬)');
+  return best;
+}
+function findNearestCar(maxD=5.5){
+  let best=null,bd=maxD;
+  for(const c of cars){const k=Math.hypot(c.x-P.x,c.z-P.z);if(k<bd){bd=k;best=c;}}
+  return best;
 }
 
 function addCrime(n){stars=Math.min(5,Math.max(stars,n));wT=16;}
@@ -403,28 +403,38 @@ function explodeCar(c){
   c.dead=1;scene.remove(c.m);
 }
 
-// ===== ACTIONS & TIR
-function doAction(){
+// ===== BOUTON D'ACTION INTELLIGENT UNIQUE (VOITURE / PORTE / BOUTIQUE / DIALOGUE)
+function doSmartAction(){
   if(S==='shop'){closeShop();return;}
   if(S!=='play')return;
-  if(inside){if(Math.hypot(P.x-IX,P.z-(IZ+6))<4.2){inside=0;P.x=ret.x;P.z=ret.z;streamChunks(1,P.x,P.z);}return;}
+  if(inside){
+    if(Math.hypot(P.x-IX,P.z-(IZ+6))<4.5){inside=0;P.x=ret.x;P.z=ret.z;streamChunks(1,P.x,P.z);}
+    return;
+  }
   if(P.car){
     const c=P.car,s=Math.sin(c.h),k=Math.cos(c.h);
     P.x=c.x-k*3.0;P.z=c.z+s*3.0;hitBuilding(P,0.6);
     P.car=null;c.v=0;c.kind='me';P.m.visible=true;updateWeaponHUD();updateControlUI();return;
   }
-  if(Math.hypot(P.x-SHOP_X,P.z-SHOP_Z)<4.5){openShop();return;}
+  if(Math.hypot(P.x-SHOP_X,P.z-SHOP_Z)<4.8){openShop();return;}
+  const bestCar=findNearestCar(5.5);
+  if(bestCar){
+    if(bestCar.kind!=='me'){addCrime(bestCar.kind==='cop'?2:1);showToast(bestCar.vType==='taxi'?'Taxi Jaune pris !':bestCar.vType==='moto'?'Moto Benskin prise !':'Véhicule emprunté !');}
+    bestCar.kind='me';bestCar.v=0;bestCar.revLock=0;P.car=bestCar;P.m.visible=false;updateControlUI();playHorn();return;
+  }
   const d=nearDoor();
   if(d){
     inside=1;ret={x:d.x,z:d.z+1.6};P.x=IX;P.z=IZ+4.5;P.h=PI;cy=PI;
     roomCash.visible=true;roomMed.visible=true;
     showToast('Maison visitée : récupère le cash et les soins !');return;
   }
-  let best=null,bd=5.5;
-  for(const c of cars){const k=Math.hypot(c.x-P.x,c.z-P.z);if(k<bd){bd=k;best=c;}}
-  if(best){
-    if(best.kind!=='me'){addCrime(best.kind==='cop'?2:1);showToast(best.vType==='taxi'?'Taxi Jaune pris !':best.vType==='moto'?'Moto Benskin prise !':'Véhicule emprunté !');}
-    best.kind='me';best.v=0;P.car=best;P.m.visible=false;updateControlUI();playHorn();
+  const npc=findNearestNPC(6.0);
+  if(npc){
+    npc.h=Math.atan2(P.x-npc.x,P.z-npc.z);npc.t=4;
+    const line=npc.fl>0?'Laisse-moi tranquille !':npc.profile.lines[npc.lineIdx%npc.profile.lines.length];
+    npc.lineIdx++;
+    showNpcBubble(npc.profile.name,line,4.5);
+    playTone(520,0.12,'sine');
   }
 }
 
@@ -475,41 +485,48 @@ function fireWeapon(){
   }
 }
 
-// ===== CONDUITE AVEC PÉDALES ACCÉLÉRER / FREINER / NITRO
+// ===== CONDUITE & MARCHE ARRIÈRE FLUIDE STYLE PAYBACK 2
 function drivePlayerCar(c,dt,i){
-  const m=Math.min(1,Math.hypot(i.x,i.y));
-  let thr=0,st=0;
-  const fwdX=Math.sin(cy),fwdZ=Math.cos(cy);
-  const rgtX=-Math.cos(cy),rgtZ=Math.sin(cy);
+  const maxSpd=c.vType==='moto'?38:c.vType==='vip'?37:33;
 
-  if(m>0.12){
-    const wx=fwdX*(-i.y)+rgtX*i.x;
-    const wz=fwdZ*(-i.y)+rgtZ*i.x;
-    const th=Math.atan2(wx,wz);
-    const df=angd(th,c.h);
-    if(Math.abs(df)<2.15){thr=m;st=cl(df*2.5,-1,1);}
-    else{thr=-0.75*m;st=cl(angd(th,c.h+PI)*2,-1,1);}
+  // 1. Direction : Joystick gauche (axe X) ou touches Gauche/Droite braquent directement la voiture
+  const steerInput=cl(-i.x,-1,1);
+
+  // 2. Accélération (▲) et Frein / Marche arrière automatique (▼)
+  if(i.gas){
+    c.revLock=0;
+    if(c.v<-0.5)c.v+=36*dt; // Sortie rapide de marche arrière
+    else c.v+=22*dt;
+  }else if(i.brake){
+    if(c.v>1.2&&!c.revLock){
+      // Freinage puissant tant que la voiture avance
+      c.v=Math.max(0,c.v-42*dt);
+      if(c.v<=1.2)c.revLock=1; // Passe instantanément en marche arrière dès l'arrêt
+    }else{
+      // Marche arrière fluide et réactive !
+      c.revLock=1;
+      c.v-=18*dt;
+    }
+  }else{
+    // Roue libre : décélération naturelle
+    c.revLock=0;
+    c.v-=c.v*Math.min(1,1.35*dt);
+    if(Math.abs(c.v)<0.15)c.v=0;
   }
-  if(i.gas)thr=1;
-  if(i.brake){
-    if(c.v>1.5){c.v-=c.v*Math.min(1,5.8*dt);thr=0;}
-    else thr=-0.85;
-  }
 
-  const boost=(i.nitro&&P.stamina>5&&thr>0)?1.35:1.0;
-  if(boost>1)P.stamina=Math.max(0,P.stamina-25*dt);
+  c.v=cl(c.v,-15,maxSpd);
 
-  const maxSpd=(c.vType==='moto'?36:c.vType==='vip'?35:31)*boost;
-  c.v+=thr*(thr>0?19*boost:14)*dt;
-  if(!thr&&!i.brake)c.v-=c.v*Math.min(1,0.95*dt);
-  c.v=cl(c.v,-11,maxSpd);
-  const dir=c.v>=0?1:-1;
-  c.h+=st*(c.vType==='moto'?3.1:2.4)*cl(Math.abs(c.v)/5.0,0,1)*dir*dt;
+  // 3. Braquage : fonctionne même à très basse vitesse pour manœuvrer facilement en marche arrière
+  const turnFactor=cl(Math.abs(c.v)/3.2,0.22,1);
+  const dir=c.v>=-0.05?1:-1;
+  c.h+=steerInput*(c.vType==='moto'?3.2:2.65)*turnFactor*dir*dt;
+
   c.x+=Math.sin(c.h)*c.v*dt;
   c.z+=Math.cos(c.h)*c.v*dt;
+
   if(hitBuilding(c,c.vType==='moto'?1.2:2.1)){
     if(Math.abs(c.v)>11){c.hp-=Math.abs(c.v)*0.32;playTone(105,0.14,'sawtooth');}
-    c.v*=-0.25;
+    c.v*=-0.2;
   }
 }
 
@@ -568,7 +585,6 @@ function update(dt){
   tm+=dt;updateRadio(dt);
   const i=getInput(),pl=S==='play';
 
-  // Cycle Jour / Crépuscule / Nuit progressif
   if(pl){
     dayTime=(dayTime+dt*0.04)%24;
     const isNight=dayTime<6||dayTime>19;
@@ -593,18 +609,20 @@ function update(dt){
 
   if(pl){
     P.cd=Math.max(0,P.cd-dt);P.inv=Math.max(0,P.inv-dt);
-    // Gravité & Saut
     if(P.y>0||P.vy>0){P.y+=P.vy*dt;P.vy-=18*dt;if(P.y<=0){P.y=0;P.vy=0;}}
 
     if(P.car){
       drivePlayerCar(P.car,dt,i);
       P.x=P.car.x;P.z=P.car.z;P.h=P.car.h;
-      if(!lid)cy-=angd(cy,P.car.h)*Math.min(1,dt*1.9);
-      if(!i.nitro)P.stamina=Math.min(100,P.stamina+12*dt);
-      // Station-service pour réparer la voiture
+      // Caméra suit la voiture en marche avant, et regarde en arrière si on recule !
+      if(!lid){
+        const targetCamH=P.car.v<-1.5?P.car.h+PI:P.car.h;
+        cy-=angd(cy,targetCamH)*Math.min(1,dt*2.2);
+      }
+      P.stamina=Math.min(100,P.stamina+15*dt);
       if(Math.hypot(P.x-GAS_X,P.z-GAS_Z)<12&&P.car.hp<P.car.maxHp){
         P.car.hp=Math.min(P.car.maxHp,P.car.hp+35*dt);
-        if(R()<0.08)showToast('⛽ Station-service : Réparation du véhicule en cours...');
+        if(R()<0.08)showToast('⛽ Station-service : Réparation du véhicule...');
       }
     }else{
       const m=Math.hypot(i.x,i.y);
@@ -643,7 +661,6 @@ function update(dt){
 
     if(i.fire)fireWeapon();
 
-    // Suivi mission
     beacon.visible=!inside&&!!activeMission;
     bRing.rotation.y+=dt*2.4;
     if(!inside&&activeMission){
@@ -687,7 +704,6 @@ function update(dt){
   if(!inside&&S!=='pause'&&S!=='shop'){
     for(const c of cars){
       if(c!==P.car)updateAICar(c,dt);
-      // Fumée moteur quand la voiture est endommagée (< 45% PV)
       if(c.hp<c.maxHp*0.45){
         c.smokeT-=dt;
         if(c.smokeT<=0){
@@ -697,7 +713,6 @@ function update(dt){
         }
       }
     }
-    // Collisions voiture <-> voiture réalistes avec rebond physique
     for(let a=0;a<cars.length;a++)for(let b=a+1;b<cars.length;b++){
       const p=cars[a],q=cars[b],d=Math.hypot(p.x-q.x,p.z-q.z);
       if(d<4.3&&d>0.01){
@@ -716,7 +731,6 @@ function update(dt){
     if(P.car&&P.car.dead){P.car=null;updateControlUI();}
     P.m.visible=!P.car;
 
-    // Policiers & BIR à pied
     for(const cp of copsOnFoot){
       const d=Math.hypot(P.x-cp.x,P.z-cp.z);
       cp.h=Math.atan2(P.x-cp.x,P.z-cp.z);
@@ -738,7 +752,6 @@ function update(dt){
       cp.m.position.set(cp.x,0,cp.z);cp.m.rotation.y=cp.h;swingLimbs(cp.m,cp.wk,0.45);
     }
 
-    // PNJ civils
     for(const p of peds){
       if(p.dead){p.t+=dt;if(p.t>9){scene.remove(p.m);p.rm=1;}continue;}
       const distP=Math.hypot(p.x-P.x,p.z-P.z);
@@ -758,7 +771,6 @@ function update(dt){
     }
     peds=peds.filter(p=>!p.rm);
 
-    // Ennemis de mission
     for(const e of enemies){
       if(e.dead)continue;
       const d=Math.hypot(P.x-e.x,P.z-e.z);
@@ -813,7 +825,8 @@ function update(dt){
   $('clock-tag').textContent=`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
 
   if(P.car){
-    $('speed-val').textContent=Math.round(Math.abs(P.car.v)*3.6);
+    const kmh=Math.round(Math.abs(P.car.v)*3.6);
+    $('speed-val').textContent=(P.car.v<-0.5?'R ':'')+kmh;
     const pct=cl((P.car.hp/P.car.maxHp)*100,0,100);
     $('car-hp-bar').style.width=pct+'%';
     $('car-hp-bar').style.background=pct<35?'#ff1744':pct<65?'#ff9100':'#00e676';
@@ -827,9 +840,10 @@ function update(dt){
   if(msgT>0){msgT-=dt;if(msgT<=0)$('toast').classList.remove('show');}
   if(bubbleT>0){bubbleT-=dt;if(bubbleT<=0)$('npc-bubble').style.display='none';}
 
+  // Icône dynamique du bouton d'action intelligent à pied
   const ab=document.querySelector('#controls-foot .t-act');
   if(ab){
-    const ic=inside?'🚪':distShop<4.5?'🛒':nearDoor()?'🏠':'🚗';
+    const ic=inside?'🚪':distShop<4.8?'🛒':findNearestCar(5.5)?'🚗':nearDoor()?'🏠':findNearestNPC(6.0)?'💬':'🚗';
     if(ab.textContent!==ic)ab.textContent=ic;
   }
   drawRadar();
@@ -837,10 +851,10 @@ function update(dt){
 
 const rCtx=$('radar').getContext('2d');
 function drawRadar(){
-  const W=116,H=116,CX=W/2,CY=H/2,SC=0.45;
+  const W=112,H=112,CX=W/2,CY=H/2,SC=0.45;
   rCtx.clearRect(0,0,W,H);
   rCtx.save();
-  rCtx.beginPath();rCtx.arc(CX,CY,54,0,PI*2);rCtx.clip();
+  rCtx.beginPath();rCtx.arc(CX,CY,52,0,PI*2);rCtx.clip();
   rCtx.fillStyle='#0d1526';rCtx.fillRect(0,0,W,H);
 
   if(!inside){
@@ -850,7 +864,6 @@ function drawRadar(){
     for(let x=gx0;x<=P.x+130;x+=CS){if(x>=0&&x<=WS){rCtx.beginPath();rCtx.moveTo((x-P.x)*SC,-130*SC);rCtx.lineTo((x-P.x)*SC,130*SC);rCtx.stroke();}}
     for(let z=gz0;z<=P.z+130;z+=CS){if(z>=0&&z<=WS){rCtx.beginPath();rCtx.moveTo(-130*SC,(z-P.z)*SC);rCtx.lineTo(130*SC,(z-P.z)*SC);rCtx.stroke();}}
 
-    // Point bleu Boutique & point orange Station-service
     rCtx.fillStyle='#38bdf8';rCtx.fillRect((SHOP_X-P.x)*SC-3,(SHOP_Z-P.z)*SC-3,6,6);
     rCtx.fillStyle='#fb923c';rCtx.fillRect((GAS_X-P.x)*SC-3,(GAS_Z-P.z)*SC-3,6,6);
 
@@ -865,7 +878,7 @@ function drawRadar(){
     if(activeMission){
       let bx=(activeMission.tx-P.x)*SC,bz=(activeMission.tz-P.z)*SC;
       const bd=Math.hypot(bx,bz);
-      if(bd>46){bx*=46/bd;bz*=46/bd;}
+      if(bd>44){bx*=44/bd;bz*=44/bd;}
       rCtx.fillStyle=SAVE.missionIdx<STORY_MISSIONS.length?'#ffd54f':'#00e676';
       rCtx.beginPath();rCtx.arc(bx,bz,4.5,0,PI*2);rCtx.fill();
     }
@@ -902,3 +915,4 @@ function loop(t){
   ren.render(scene,cam);
 }
 requestAnimationFrame(loop);
+
