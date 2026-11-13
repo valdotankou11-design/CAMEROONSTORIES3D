@@ -11,7 +11,7 @@ canvas{position:fixed;inset:0;display:block}
 .hud{position:fixed;pointer-events:none;z-index:4}
 
 /* TOP LEFT */
-#hud-tl{left:calc(12px + env(safe-area-inset-left,0px));top:calc(10px + env(safe-area-inset-top,0px));width:196px;background:var(--glass);padding:8px 11px;border-radius:12px;border:1px solid rgba(255,255,255,0.16);backdrop-filter:blur(8px)}
+#hud-tl{left:calc(12px + env(safe-area-inset-left,0px));top:calc(10px + env(safe-area-inset-top,0px));width:192px;background:var(--glass);padding:8px 11px;border-radius:12px;border:1px solid rgba(255,255,255,0.16);backdrop-filter:blur(8px)}
 .stat-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .stat-ico{font-size:11px;width:14px;text-align:center}
 .bar-bg{flex:1;height:7px;background:rgba(0,0,0,0.65);border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,0.18)}
@@ -24,18 +24,18 @@ canvas{position:fixed;inset:0;display:block}
 #zone-tag{font-size:9.5px;font-weight:800;color:#90caf9;text-transform:uppercase;letter-spacing:.6px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* RADAR EN HAUT SOUS LE HUD GAUCHE */
-#radar-wrap{left:calc(12px + env(safe-area-inset-left,0px));top:calc(124px + env(safe-area-inset-top,0px));width:116px;height:116px}
-#radar{width:116px;height:116px;border-radius:50%;border:2.5px solid rgba(255,255,255,0.82);background:#0c1322;box-shadow:0 4px 16px rgba(0,0,0,0.65)}
+#radar-wrap{left:calc(12px + env(safe-area-inset-left,0px));top:calc(122px + env(safe-area-inset-top,0px));width:112px;height:112px}
+#radar{width:112px;height:112px;border-radius:50%;border:2.5px solid rgba(255,255,255,0.82);background:#0c1322;box-shadow:0 4px 16px rgba(0,0,0,0.65)}
 #radio-badge{margin-top:3px;text-align:center;font-size:9.5px;font-weight:800;color:var(--gold);text-shadow:0 1px 4px #000}
 
 /* TOP RIGHT */
-#hud-tr{right:calc(62px + env(safe-area-inset-right,0px));top:calc(10px + env(safe-area-inset-top,0px));text-align:right;background:var(--glass);padding:8px 13px;border-radius:12px;border:1px solid rgba(255,255,255,0.16);backdrop-filter:blur(8px)}
+#hud-tr{right:calc(62px + env(safe-area-inset-right,0px));top:calc(10px + env(safe-area-inset-top,0px));text-align:right;background:var(--glass);padding:8px 13px;border-radius:12px;border:1px solid rgba(255,255,255,0.16);backdrop-filter:blur(8px);pointer-events:auto;cursor:pointer}
 #cash{font-size:18px;font-weight:900;color:var(--green)}
-#weapon-info{font-size:11px;font-weight:700;color:#e2e8f0;margin-top:2px}
+#weapon-info{font-size:11.5px;font-weight:800;color:#f8fafc;margin-top:3px;background:rgba(255,255,255,0.1);padding:2px 7px;border-radius:6px;display:inline-block}
 #mission-timer{font-size:11.5px;font-weight:800;color:var(--gold);margin-top:2px}
 
 /* COMPTEUR VITESSE VOITURE */
-#speedo{display:none;right:calc(62px + env(safe-area-inset-right,0px));top:calc(84px + env(safe-area-inset-top,0px));background:var(--glass);padding:6px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.16);text-align:right}
+#speedo{display:none;right:calc(62px + env(safe-area-inset-right,0px));top:calc(88px + env(safe-area-inset-top,0px));background:var(--glass);padding:6px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.16);text-align:right}
 #speed-val{font-size:20px;font-weight:900;color:#38bdf8}
 #speedo small{font-size:10px;font-weight:800;color:#94a3b8}
 .car-hp-bg{width:84px;height:5px;background:rgba(0,0,0,0.65);border-radius:3px;overflow:hidden;margin-top:4px}
@@ -47,7 +47,7 @@ canvas{position:fixed;inset:0;display:block}
 #toast.show{opacity:1}
 
 /* BULLE PNJ */
-#npc-bubble{left:50%;bottom:calc(140px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(15,23,42,0.94);border-left:4px solid var(--gold);padding:9px 14px;border-radius:10px;max-width:390px;width:82vw;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.65)}
+#npc-bubble{left:50%;bottom:calc(135px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(15,23,42,0.94);border-left:4px solid var(--gold);padding:9px 14px;border-radius:10px;max-width:390px;width:82vw;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.65)}
 #npc-name{font-size:11px;font-weight:800;color:var(--gold);text-transform:uppercase;margin-bottom:2px}
 #npc-text{font-size:12.5px;line-height:1.35;color:#f8fafc}
 
@@ -71,7 +71,7 @@ canvas{position:fixed;inset:0;display:block}
 .bt:active{transform:translateY(2px)}
 .bt.sec{background:#1e293b;box-shadow:0 4px 0 #0f172a;font-size:13px;padding:9px 18px}
 .bt.danger{background:#991b1b;box-shadow:0 4px 0 #450a0a;font-size:12px;padding:8px 15px}
-#how{display:none;max-width:620px;font-size:12px;line-height:1.5;color:#e2e8f0;background:rgba(0,0,0,0.75);padding:11px 15px;border-radius:12px;margin-top:12px;border:1px solid rgba(255,255,255,0.15);text-align:left}
+#how{display:none;max-width:600px;font-size:12px;line-height:1.5;color:#e2e8f0;background:rgba(0,0,0,0.75);padding:11px 15px;border-radius:12px;margin-top:12px;border:1px solid rgba(255,255,255,0.15);text-align:left}
 
 /* BOUTIQUE */
 #shop-modal{background:rgba(6,9,17,0.88);z-index:15}
@@ -88,31 +88,26 @@ canvas{position:fixed;inset:0;display:block}
 #wasted{background:rgba(30,0,0,0.78);font-size:clamp(40px,12vh,88px);font-weight:900;color:#ff3d3d}
 #rot{background:#090d16;z-index:25;font-size:17px}
 
-/* CONTRÔLES TACTILES DÉGAGÉS */
+/* CONTRÔLES TACTILES ÉPURÉS STYLE PAYBACK 2 */
 #jz,#lz{position:fixed;bottom:0;height:66%;z-index:5;display:none}
-#jz{left:0;width:44%}
-#lz{right:0;width:56%;height:100%;z-index:4}
+#jz{left:0;width:45%}
+#lz{right:0;width:55%;height:100%;z-index:4}
 #jb{position:fixed;width:112px;height:112px;border-radius:50%;border:3px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.1);display:none;pointer-events:none;z-index:6}
 #jk{position:absolute;left:31px;top:31px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.82)}
 .t-group{display:none}
 body.t .t-group{display:block}
 body.t #jz,body.t #lz{display:block}
-.tbtn{position:fixed;z-index:6;border-radius:50%;border:2px solid rgba(255,255,255,0.62);background:rgba(12,17,29,0.78);color:#fff;font-size:21px;display:flex;align-items:center;justify-content:center;touch-action:none;padding:0;box-shadow:0 4px 12px rgba(0,0,0,0.45)}
-.tbtn.on{background:var(--accent);transform:scale(.93)}
+.tbtn{position:fixed;z-index:6;border-radius:50%;border:2px solid rgba(255,255,255,0.65);background:rgba(12,17,29,0.76);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;touch-action:none;padding:0;box-shadow:0 4px 14px rgba(0,0,0,0.5)}
+.tbtn.on{background:var(--accent);transform:scale(.92)}
 
-/* BOUTONS À PIED */
-.t-fire{right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:78px;height:78px;font-size:29px;background:rgba(211,47,47,0.82)}
-.t-run{right:calc(24px + env(safe-area-inset-right,0px));bottom:calc(110px + env(safe-area-inset-bottom,0px));width:60px;height:60px;background:rgba(25,118,210,0.8)}
-.t-jump{right:calc(96px + env(safe-area-inset-right,0px));bottom:calc(100px + env(safe-area-inset-bottom,0px));width:52px;height:52px;font-size:19px}
-.t-act{right:calc(108px + env(safe-area-inset-right,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:62px;height:62px}
-.t-wep{right:calc(158px + env(safe-area-inset-right,0px));bottom:calc(94px + env(safe-area-inset-bottom,0px));width:46px;height:46px;font-size:16px}
-.t-talk{right:calc(178px + env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));width:48px;height:48px;font-size:17px}
+/* 3 BOUTONS À PIED (TIRER, COURIR/SAUTER, ACTION INTELLIGENTE) */
+.t-fire{right:calc(22px + env(safe-area-inset-right,0px));bottom:calc(22px + env(safe-area-inset-bottom,0px));width:82px;height:82px;font-size:32px;background:rgba(211,47,47,0.82)}
+.t-run{right:calc(28px + env(safe-area-inset-right,0px));bottom:calc(118px + env(safe-area-inset-bottom,0px));width:66px;height:66px;font-size:26px;background:rgba(25,118,210,0.8)}
+.t-act{right:calc(118px + env(safe-area-inset-right,0px));bottom:calc(28px + env(safe-area-inset-bottom,0px));width:66px;height:66px;font-size:26px}
 
-/* BOUTONS EN VOITURE (ACCÉLÉRER, FREINER, NITRO, SORTIR) */
-.t-gas{right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:80px;height:80px;font-size:30px;background:rgba(0,200,83,0.8)}
-.t-brake{right:calc(110px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:68px;height:68px;font-size:24px;background:rgba(211,47,47,0.8)}
-.t-nitro{right:calc(26px + env(safe-area-inset-right,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px));width:56px;height:56px;font-size:22px;background:rgba(255,145,0,0.82)}
-.t-exit{right:calc(94px + env(safe-area-inset-right,0px));bottom:calc(102px + env(safe-area-inset-bottom,0px));width:56px;height:56px}
-.t-horn{right:calc(162px + env(safe-area-inset-right,0px));bottom:calc(94px + env(safe-area-inset-bottom,0px));width:48px;height:48px;font-size:17px}
+/* 3 BOUTONS EN VOITURE (ACCÉLÉRER, FREINER/RECULER, SORTIR) */
+.t-gas{right:calc(22px + env(safe-area-inset-right,0px));bottom:calc(22px + env(safe-area-inset-bottom,0px));width:84px;height:84px;font-size:32px;font-weight:900;background:rgba(0,200,83,0.8)}
+.t-brake{right:calc(120px + env(safe-area-inset-right,0px));bottom:calc(22px + env(safe-area-inset-bottom,0px));width:74px;height:74px;font-size:28px;font-weight:900;background:rgba(211,47,47,0.8)}
+.t-exit{right:calc(28px + env(safe-area-inset-right,0px));bottom:calc(120px + env(safe-area-inset-bottom,0px));width:60px;height:60px;font-size:24px}
 
 @media(orientation:portrait){body.t:not(.force) #rot{display:flex}}
