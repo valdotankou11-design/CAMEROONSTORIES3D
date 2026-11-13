@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>CAMEROUN STORIES 3D · Édition Réaliste</title>
+<title>CAMEROUN STORIES 3D · Édition Payback Style</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- HUD SUPÉRIEUR GAUCHE : SANTÉ, ARMURE, ENDURANCE, ÉTOILES, QUARTIER -->
+<!-- HUD SUPÉRIEUR GAUCHE -->
 <div class="hud" id="hud-tl">
   <div class="stat-row"><span class="stat-ico">❤️</span><div class="bar-bg"><div id="hp-bar"></div></div></div>
   <div class="stat-row"><span class="stat-ico">🛡️</span><div class="bar-bg"><div id="ar-bar"></div></div></div>
@@ -21,16 +21,16 @@
   <div id="zone-tag">📍 YAOUNDÉ · BOULEVARD DU 20 MAI</div>
 </div>
 
-<!-- RADAR SOUS LE HUD GAUCHE (LIBÈRE TOTALEMENT LE JOYSTICK EN BAS) -->
+<!-- RADAR SOUS LE HUD GAUCHE -->
 <div class="hud" id="radar-wrap">
-  <canvas id="radar" width="116" height="116"></canvas>
+  <canvas id="radar" width="112" height="112"></canvas>
   <div id="radio-badge">📻 CRTV FM · Makossa</div>
 </div>
 
-<!-- HUD SUPÉRIEUR DROIT : ARGENT, ARME, CHRONO -->
+<!-- HUD SUPÉRIEUR DROIT (CLIQUER SUR L'ARME CHANGE D'ARME) -->
 <div class="hud" id="hud-tr">
   <div id="cash">500 FCFA</div>
-  <div id="weapon-info">🔫 Pistolet 9mm</div>
+  <div id="weapon-info" onclick="switchWeapon()" title="Appuyer pour changer d'arme">🔫 Pistolet 9mm ↻</div>
   <div id="mission-timer"></div>
 </div>
 
@@ -44,7 +44,7 @@
 <div class="hud" id="obj-banner">🎯 Objectif : Rejoins le point de mission</div>
 <div class="hud" id="toast"></div>
 
-<!-- BULLE DIALOGUE AGENT IA PNJ -->
+<!-- BULLE DIALOGUE PNJ -->
 <div class="hud" id="npc-bubble">
   <div id="npc-name">Moussa · Taximan</div>
   <div id="npc-text">Bienvenue à Yaoundé !</div>
@@ -59,30 +59,25 @@
 <div id="jz"></div>
 <div id="jb"><div id="jk"></div></div>
 
-<!-- CONTRÔLES TACTILES : MODE À PIED -->
+<!-- CONTRÔLES TACTILES ÉPURÉS STYLE PAYBACK 2 : MODE À PIED (3 BOUTONS) -->
 <div id="controls-foot" class="t-group">
   <button class="tbtn t-fire" data-k="fire" title="Tirer">🔫</button>
-  <button class="tbtn t-run" data-k="run" title="Courir">🏃</button>
-  <button class="tbtn t-jump" data-k="jump" title="Sauter / Esquiver">🦘</button>
-  <button class="tbtn t-act" data-k="act" title="Monter / Entrer">🚗</button>
-  <button class="tbtn t-wep" data-k="wep" title="Changer d'arme">🔄</button>
-  <button class="tbtn t-talk" data-k="talk" title="Parler">💬</button>
+  <button class="tbtn t-run" data-k="run" title="Maintenir: Courir · Tap: Sauter">🏃</button>
+  <button class="tbtn t-act" data-k="act" title="Action">🚗</button>
 </div>
 
-<!-- CONTRÔLES TACTILES : MODE EN VOITURE -->
+<!-- CONTRÔLES TACTILES ÉPURÉS STYLE PAYBACK 2 : MODE EN VOITURE (3 BOUTONS) -->
 <div id="controls-car" class="t-group" style="display:none">
-  <button class="tbtn t-gas" data-k="gas" title="Accélérer">⚡</button>
-  <button class="tbtn t-brake" data-k="brake" title="Freiner / Reculer">🛑</button>
-  <button class="tbtn t-nitro" data-k="nitro" title="Turbo Nitro">🔥</button>
+  <button class="tbtn t-gas" data-k="gas" title="Accélérer">▲</button>
+  <button class="tbtn t-brake" data-k="brake" title="Freiner / Marche arrière">▼</button>
   <button class="tbtn t-exit" data-k="act" title="Sortir du véhicule">🚪</button>
-  <button class="tbtn t-horn" data-k="horn" title="Klaxon">📢</button>
 </div>
 
 <!-- OVERLAYS -->
 <div class="overlay" id="wasted">WASTED</div>
 <div class="overlay" id="rot">
   <div style="font-size:48px;margin-bottom:10px">📱↻</div>
-  <div>Passe ton téléphone en mode paysage pour une expérience optimale</div>
+  <div>Passe ton téléphone en mode paysage pour jouer</div>
   <button class="bt sec" style="margin-top:16px" onclick="document.body.classList.add('force')">Continuer en portrait</button>
 </div>
 
@@ -139,9 +134,8 @@
     <button class="bt danger" id="btn-reset">RÉINITIALISER</button>
   </div>
   <div id="how">
-    <b>À pied (Mobile) :</b> Joystick gauche = marcher dans la direction exacte de la caméra · 🏃 Courir · 🦘 Sauter · 🔫 Tirer · 🚗 Monter en voiture / Entrer maison ou boutique · 💬 Parler.<br>
-    <b>En voiture (Mobile) :</b> Joystick gauche = diriger · ⚡ Accélérer · 🛑 Freiner / Marche arrière · 🔥 Turbo Nitro · 🚪 Sortir du véhicule.<br>
-    <b>Clavier :</b> ZQSD / Flèches · Souris = caméra · Espace = tirer/sauter · Maj = courir/nitro · E = entrer/sortir · T = parler · Tab = changer d'arme · R = radio.
+    <b>À pied :</b> Joystick gauche = marcher · <b>🏃</b> (maintenir = courir, tap rapide = sauter) · <b>🔫</b> = tirer · <b>🚗/💬/🏠</b> = monter en voiture, parler ou entrer · Touche l'arme en haut à droite pour en changer.<br>
+    <b>En voiture (Style Payback 2) :</b> Joystick gauche = tourner (Gauche / Droite) · <b>▲</b> = Accélérer · <b>▼</b> = Freiner puis Marche arrière automatique · <b>🚪</b> = Sortir.
   </div>
 </div>
 
@@ -150,3 +144,4 @@
 <script src="game.js"></script>
 </body>
 </html>
+
