@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>CAMEROUN STORIES 3D · Édition Réaliste</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- HUD SUPÉRIEUR GAUCHE : SANTÉ, ARMURE, ENDURANCE, ÉTOILES, QUARTIER -->
+<div class="hud" id="hud-tl">
+  <div class="stat-row"><span class="stat-ico">❤️</span><div class="bar-bg"><div id="hp-bar"></div></div></div>
+  <div class="stat-row"><span class="stat-ico">🛡️</span><div class="bar-bg"><div id="ar-bar"></div></div></div>
+  <div class="stat-row"><span class="stat-ico">⚡</span><div class="bar-bg"><div id="st-bar"></div></div></div>
+  <div class="tl-footer">
+    <div id="stars">☆☆☆☆☆</div>
+    <div id="clock-tag">14:00</div>
+  </div>
+  <div id="zone-tag">📍 YAOUNDÉ · BOULEVARD DU 20 MAI</div>
+</div>
+
+<!-- RADAR SOUS LE HUD GAUCHE (LIBÈRE TOTALEMENT LE JOYSTICK EN BAS) -->
+<div class="hud" id="radar-wrap">
+  <canvas id="radar" width="116" height="116"></canvas>
+  <div id="radio-badge">📻 CRTV FM · Makossa</div>
+</div>
+
+<!-- HUD SUPÉRIEUR DROIT : ARGENT, ARME, CHRONO -->
+<div class="hud" id="hud-tr">
+  <div id="cash">500 FCFA</div>
+  <div id="weapon-info">🔫 Pistolet 9mm</div>
+  <div id="mission-timer"></div>
+</div>
+
+<!-- COMPTEUR DE VITESSE EN VOITURE -->
+<div class="hud" id="speedo">
+  <span id="speed-val">0</span> <small>KM/H</small>
+  <div class="car-hp-bg"><div id="car-hp-bar"></div></div>
+</div>
+
+<!-- BANDEAU OBJECTIF & NOTIFICATIONS -->
+<div class="hud" id="obj-banner">🎯 Objectif : Rejoins le point de mission</div>
+<div class="hud" id="toast"></div>
+
+<!-- BULLE DIALOGUE AGENT IA PNJ -->
+<div class="hud" id="npc-bubble">
+  <div id="npc-name">Moussa · Taximan</div>
+  <div id="npc-text">Bienvenue à Yaoundé !</div>
+</div>
+
+<!-- BOUTONS RAPIDES HAUT DROITE -->
+<button class="top-btn" id="btn-pause" title="Pause">❚❚</button>
+<button class="top-btn" id="btn-radio" title="Changer de radio FM">📻</button>
+
+<!-- ZONES TACTILES (JOYSTICK À GAUCHE, CAMÉRA À DROITE) -->
+<div id="lz"></div>
+<div id="jz"></div>
+<div id="jb"><div id="jk"></div></div>
+
+<!-- CONTRÔLES TACTILES : MODE À PIED -->
+<div id="controls-foot" class="t-group">
+  <button class="tbtn t-fire" data-k="fire" title="Tirer">🔫</button>
+  <button class="tbtn t-run" data-k="run" title="Courir">🏃</button>
+  <button class="tbtn t-jump" data-k="jump" title="Sauter / Esquiver">🦘</button>
+  <button class="tbtn t-act" data-k="act" title="Monter / Entrer">🚗</button>
+  <button class="tbtn t-wep" data-k="wep" title="Changer d'arme">🔄</button>
+  <button class="tbtn t-talk" data-k="talk" title="Parler">💬</button>
+</div>
+
+<!-- CONTRÔLES TACTILES : MODE EN VOITURE -->
+<div id="controls-car" class="t-group" style="display:none">
+  <button class="tbtn t-gas" data-k="gas" title="Accélérer">⚡</button>
+  <button class="tbtn t-brake" data-k="brake" title="Freiner / Reculer">🛑</button>
+  <button class="tbtn t-nitro" data-k="nitro" title="Turbo Nitro">🔥</button>
+  <button class="tbtn t-exit" data-k="act" title="Sortir du véhicule">🚪</button>
+  <button class="tbtn t-horn" data-k="horn" title="Klaxon">📢</button>
+</div>
+
+<!-- OVERLAYS -->
+<div class="overlay" id="wasted">WASTED</div>
+<div class="overlay" id="rot">
+  <div style="font-size:48px;margin-bottom:10px">📱↻</div>
+  <div>Passe ton téléphone en mode paysage pour une expérience optimale</div>
+  <button class="bt sec" style="margin-top:16px" onclick="document.body.classList.add('force')">Continuer en portrait</button>
+</div>
+
+<!-- BOUTIQUE & ARMURERIE -->
+<div class="overlay" id="shop-modal">
+  <div class="shop-box">
+    <h3>🛒 BOUTIQUE DU QUARTIER & ARMURERIE</h3>
+    <p>Tes achats et ta progression sont sauvegardés automatiquement.</p>
+    <div class="shop-grid">
+      <div class="shop-item" onclick="buyItem('heal')">
+        <h4>🍲 Ndolé & Soins Complets</h4>
+        <p>Restaure 100% de ta santé.</p>
+        <div class="shop-price">150 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('armor')">
+        <h4>🦺 Gilet Pare-Balles Lourd</h4>
+        <p>Ajoute +100% de protection.</p>
+        <div class="shop-price">300 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('smg')">
+        <h4>🔥 Mitraillette Uzi Pro</h4>
+        <p>Cadence de tir rapide automatique.</p>
+        <div class="shop-price">600 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('rifle')">
+        <h4>🎯 Fusil d'Assaut AK-47</h4>
+        <p>Dégâts lourds longue portée.</p>
+        <div class="shop-price">1200 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('clear')">
+        <h4>🕶️ Arrangement Commissariat</h4>
+        <p>Efface toutes les étoiles de recherche.</p>
+        <div class="shop-price">400 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('repair')">
+        <h4>🔧 Kit Réparation Express</h4>
+        <p>Répare instantanément ton véhicule.</p>
+        <div class="shop-price">200 FCFA</div>
+      </div>
+    </div>
+    <button class="bt sec" onclick="closeShop()">FERMER LA BOUTIQUE</button>
+  </div>
+</div>
+
+<!-- MENU PRINCIPAL -->
+<div class="overlay" id="menu">
+  <div class="flag-bar"><span></span><span></span><span></span></div>
+  <h1>CAMEROUN STORIES 3D</h1>
+  <h2>YAOUNDÉ · MONUMENT · BASTOS · NGOA-EKELLÉ</h2>
+  <div class="save-card" id="save-summary">Sauvegarde locale prête</div>
+  <div class="btn-row">
+    <button class="bt" id="btn-play">▶ JOUER / CONTINUER</button>
+    <button class="bt sec" id="btn-how">COMMANDES</button>
+    <button class="bt danger" id="btn-reset">RÉINITIALISER</button>
+  </div>
+  <div id="how">
+    <b>À pied (Mobile) :</b> Joystick gauche = marcher dans la direction exacte de la caméra · 🏃 Courir · 🦘 Sauter · 🔫 Tirer · 🚗 Monter en voiture / Entrer maison ou boutique · 💬 Parler.<br>
+    <b>En voiture (Mobile) :</b> Joystick gauche = diriger · ⚡ Accélérer · 🛑 Freiner / Marche arrière · 🔥 Turbo Nitro · 🚪 Sortir du véhicule.<br>
+    <b>Clavier :</b> ZQSD / Flèches · Souris = caméra · Espace = tirer/sauter · Maj = courir/nitro · E = entrer/sortir · T = parler · Tab = changer d'arme · R = radio.
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="world.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
