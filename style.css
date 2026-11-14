@@ -11,11 +11,12 @@ html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;font-family:
 canvas{position:fixed;inset:0;display:block}
 .hud{position:fixed;pointer-events:none;z-index:4}
 
-/* RÉTICULE DE VISÉE TACTIQUE */
-#crosshair{position:fixed;left:50%;top:46%;width:32px;height:32px;transform:translate(-50%,-50%);pointer-events:none;z-index:5;transition:transform .12s}
+/* RÉTICULE DE VISÉE TACTIQUE (MASQUÉ LORSQUE MAINS NUES) */
+#crosshair{position:fixed;left:50%;top:46%;width:32px;height:32px;transform:translate(-50%,-50%);pointer-events:none;z-index:5;transition:transform .12s;display:none}
 .ch-ring{position:absolute;inset:0;border:1.5px solid rgba(255,255,255,0.72);border-radius:50%;transition:border-color .1s,transform .12s}
 .ch-dot{position:absolute;left:50%;top:50%;width:3.5px;height:3.5px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)}
 #crosshair.aiming .ch-ring{border-color:#22c55e;transform:scale(0.74)}
+#crosshair.guard .ch-ring{border-color:#eab308;transform:scale(0.65);border-style:dashed}
 #crosshair.locked .ch-ring{border-color:#ef4444;transform:scale(0.84)}
 #crosshair.locked .ch-dot{background:#ef4444}
 
@@ -51,13 +52,14 @@ body.cutscene .hud,body.cutscene .t-group,body.cutscene #crosshair,body.cutscene
 #zone-tag{font-size:8.5px;font-weight:700;color:#cbd5e1;letter-spacing:.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* HUD SUPÉRIEUR DROIT : ARGENT & ARME */
-#hud-tr{right:calc(62px + env(safe-area-inset-right,0px));top:calc(10px + env(safe-area-inset-top,0px));text-align:right;background:var(--panel);padding:7px 12px;border-radius:8px;border:1px solid var(--border);pointer-events:auto;cursor:pointer}
+#hud-tr{right:calc(62px + env(safe-area-inset-right,0px));top:calc(10px + env(safe-area-inset-top,0px));text-align:right;background:var(--panel);padding:7px 12px;border-radius:8px;border:1px solid var(--border);pointer-events:auto;cursor:pointer;transition:border-color .15s}
+#hud-tr:hover,#hud-tr:active{border-color:var(--gold)}
 .tr-top{display:flex;justify-content:flex-end;align-items:center;gap:10px}
 #clock-tag{font-size:10.5px;font-weight:700;color:#94a3b8}
 #cash{font-size:16px;font-weight:800;color:var(--green);letter-spacing:.3px}
 #weapon-box{margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:flex-end;align-items:center;gap:8px}
 #weapon-name{font-size:11px;font-weight:700;color:#f1f5f9}
-#ammo-count{font-size:11px;font-weight:800;color:var(--gold);background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:3px}
+#ammo-count{font-size:10.5px;font-weight:800;color:var(--gold);background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:3px}
 
 /* COMPTEUR DE VITESSE */
 #speedo{display:none;right:calc(62px + env(safe-area-inset-right,0px));top:calc(82px + env(safe-area-inset-top,0px));background:var(--panel);padding:5px 11px;border-radius:6px;border:1px solid var(--border);text-align:right}
@@ -176,4 +178,3 @@ body.t #jz,body.t #lz{display:block}
 .t-exit{right:calc(26px + env(safe-area-inset-right,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px));width:56px;height:56px}
 
 @media(orientation:portrait){body.t:not(.force) #rot{display:flex}}
-
