@@ -3,7 +3,7 @@
   --gold:#ffd54f;
   --green:#00e676;
   --bg:#090d16;
-  --glass:rgba(10,15,28,0.82);
+  --glass:rgba(10,15,28,0.86);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
@@ -12,19 +12,35 @@ canvas{position:fixed;inset:0;display:block}
 
 /* RÉTICULE DE VISÉE CENTRAL */
 #crosshair{position:fixed;left:50%;top:46%;width:34px;height:34px;transform:translate(-50%,-50%);pointer-events:none;z-index:5;transition:transform .12s}
-.ch-ring{position:absolute;inset:0;border:2px solid rgba(255,255,255,0.65);border-radius:50%;transition:border-color .1s,transform .12s}
+.ch-ring{position:absolute;inset:0;border:2px solid rgba(255,255,255,0.68);border-radius:50%;transition:border-color .1s,transform .12s}
 .ch-dot{position:absolute;left:50%;top:50%;width:4px;height:4px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)}
 #crosshair.aiming .ch-ring{border-color:#00e676;transform:scale(0.75)}
 #crosshair.locked .ch-ring{border-color:#ff1744;transform:scale(0.85)}
 #crosshair.locked .ch-dot{background:#ff1744}
 
-/* RADAR EN HAUT À GAUCHE (CLIQUABLE POUR GRANDE CARTE) */
-#radar-wrap{left:calc(12px + env(safe-area-inset-left,0px));top:calc(10px + env(safe-area-inset-top,0px));width:124px;height:124px;pointer-events:auto;cursor:pointer}
-#radar{width:124px;height:124px;border-radius:50%;border:2.5px solid rgba(255,255,255,0.88);background:#0c1322;box-shadow:0 4px 18px rgba(0,0,0,0.7)}
-#map-pill{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(255,255,255,0.45);color:#fff;font-size:9px;font-weight:900;padding:2px 8px;border-radius:10px;letter-spacing:.5px}
+/* BANDES CINÉMATIQUES FAÇON GTA */
+.cine-bar{position:fixed;left:0;right:0;height:0;background:#000;z-index:11;transition:height .35s ease;pointer-events:none}
+#cine-top{top:0}
+#cine-bot{bottom:0}
+body.cutscene .cine-bar{height:11vh}
+body.cutscene .hud,body.cutscene .t-group,body.cutscene #crosshair,body.cutscene .top-btn{opacity:0;pointer-events:none}
 
-/* STATUT COMPACT SOUS LE RADAR */
-#hud-tl{left:calc(12px + env(safe-area-inset-left,0px));top:calc(144px + env(safe-area-inset-top,0px));width:154px;background:var(--glass);padding:6px 9px;border-radius:10px;border:1px solid rgba(255,255,255,0.16);backdrop-filter:blur(8px)}
+/* RADAR EN HAUT À GAUCHE */
+#radar-wrap{left:calc(12px + env(safe-area-inset-left,0px));top:calc(10px + env(safe-area-inset-top,0px));width:124px;height:124px;pointer-events:auto;cursor:pointer}
+#radar{width:124px;height:124px;border-radius:50%;border:2.5px solid rgba(255,255,255,0.9);background:#0c1322;box-shadow:0 4px 18px rgba(0,0,0,0.75)}
+#map-pill{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(255,255,255,0.5);color:#fff;font-size:9px;font-weight:900;padding:2px 8px;border-radius:10px;letter-spacing:.5px}
+
+/* ÉTOILES DE POLICE DIRECTEMENT SOUS LE RADAR */
+#wanted-box{left:calc(12px + env(safe-area-inset-left,0px));top:calc(142px + env(safe-area-inset-top,0px));width:148px;background:var(--glass);padding:4px 8px;border-radius:9px;border:1px solid rgba(255,255,255,0.18);text-align:center}
+#stars{font-size:17px;letter-spacing:2px;color:#64748b;line-height:1.1;transition:color .2s}
+#wanted-box.active{border-color:#ff1744;box-shadow:0 0 14px rgba(255,23,68,0.45);animation:pulseAlert 1s infinite alternate}
+#wanted-box.active #stars{color:var(--gold);text-shadow:0 0 8px rgba(255,213,79,0.75)}
+#wanted-label{font-size:8px;font-weight:900;letter-spacing:.8px;color:#94a3b8;margin-top:1px}
+#wanted-box.active #wanted-label{color:#ff5252}
+@keyframes pulseAlert{from{border-color:#ff1744}to{border-color:#2979ff}}
+
+/* STATUT COMPACT SOUS LES ÉTOILES */
+#hud-tl{left:calc(12px + env(safe-area-inset-left,0px));top:calc(188px + env(safe-area-inset-top,0px));width:154px;background:var(--glass);padding:6px 9px;border-radius:10px;border:1px solid rgba(255,255,255,0.16);backdrop-filter:blur(8px)}
 .stat-row{display:flex;align-items:center;gap:5px;margin-bottom:3px}
 .stat-ico{font-size:10px;width:13px;text-align:center}
 .bar-bg{flex:1;height:6px;background:rgba(0,0,0,0.65);border-radius:3px;overflow:hidden;border:1px solid rgba(255,255,255,0.18)}
@@ -33,31 +49,49 @@ canvas{position:fixed;inset:0;display:block}
 #st-bar{height:100%;width:100%;background:linear-gradient(90deg,#fdd835,#ffee58);transition:width .1s}
 #zone-tag{font-size:8.5px;font-weight:800;color:#90caf9;text-transform:uppercase;letter-spacing:.4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* TOP RIGHT STYLE PAYBACK 2 */
+/* TOP RIGHT */
 #hud-tr{right:calc(62px + env(safe-area-inset-right,0px));top:calc(10px + env(safe-area-inset-top,0px));text-align:right;background:var(--glass);padding:7px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.16);backdrop-filter:blur(8px);pointer-events:auto;cursor:pointer}
 .tr-top{display:flex;justify-content:flex-end;align-items:center;gap:8px}
-#stars{font-size:15px;letter-spacing:1px;color:var(--gold)}
 #clock-tag{font-size:10.5px;font-weight:800;color:#cbd5e1;background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:5px}
-#cash{font-size:17px;font-weight:900;color:var(--green);margin-top:1px}
+#cash{font-size:17px;font-weight:900;color:var(--green);margin-top:2px}
 #weapon-info{font-size:11px;font-weight:800;color:#f8fafc;margin-top:3px;background:rgba(255,255,255,0.12);padding:3px 8px;border-radius:6px;display:inline-block}
-#mission-timer{font-size:11px;font-weight:800;color:var(--gold);margin-top:2px}
 
 /* COMPTEUR VITESSE VOITURE */
-#speedo{display:none;right:calc(62px + env(safe-area-inset-right,0px));top:calc(104px + env(safe-area-inset-top,0px));background:var(--glass);padding:5px 11px;border-radius:10px;border:1px solid rgba(255,255,255,0.16);text-align:right}
+#speedo{display:none;right:calc(62px + env(safe-area-inset-right,0px));top:calc(96px + env(safe-area-inset-top,0px));background:var(--glass);padding:5px 11px;border-radius:10px;border:1px solid rgba(255,255,255,0.16);text-align:right}
 #speed-val{font-size:19px;font-weight:900;color:#38bdf8}
 #speedo small{font-size:9.5px;font-weight:800;color:#94a3b8}
 .car-hp-bg{width:80px;height:5px;background:rgba(0,0,0,0.65);border-radius:3px;overflow:hidden;margin-top:3px}
 #car-hp-bar{height:100%;width:100%;background:#00e676;transition:width .15s,background .2s}
 
-/* TOP CENTER */
-#obj-banner{left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--glass);padding:7px 15px;border-radius:20px;border:1px solid rgba(255,213,79,0.45);font-size:11.5px;font-weight:800;text-align:center;max-width:40vw}
-#toast{left:50%;top:16%;transform:translateX(-50%);background:rgba(10,15,28,0.92);padding:8px 18px;border-radius:22px;border:1px solid var(--accent);font-size:13.5px;font-weight:800;opacity:0;transition:opacity .25s;text-align:center;max-width:85vw}
+/* CARTE TACTIQUE DE MISSION PROFESSIONNELLE */
+#mission-card{left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:linear-gradient(145deg,rgba(15,23,42,0.92),rgba(10,14,26,0.94));border:1px solid rgba(255,213,79,0.45);border-left:4px solid var(--gold);border-radius:12px;padding:7px 14px;width:min(340px,42vw);box-shadow:0 8px 24px rgba(0,0,0,0.6)}
+.mc-header{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;font-weight:900;letter-spacing:.7px;color:var(--gold);margin-bottom:2px}
+#mc-badge{background:rgba(255,213,79,0.16);padding:1px 6px;border-radius:4px}
+#mc-timer{color:#38bdf8}
+#mc-title{font-size:12.5px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mc-desc{font-size:10.5px;color:#cbd5e1;line-height:1.25;margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mc-footer{display:flex;justify-content:space-between;align-items:center;margin-top:4px;padding-top:3px;border-top:1px solid rgba(255,255,255,0.1);font-size:10px;font-weight:800}
+#mc-dist{color:#93c5fd}
+#mc-reward{color:var(--green)}
+
+#toast{left:50%;top:22%;transform:translateX(-50%);background:rgba(10,15,28,0.94);padding:8px 18px;border-radius:22px;border:1px solid var(--accent);font-size:13px;font-weight:800;opacity:0;transition:opacity .25s;text-align:center;max-width:85vw}
 #toast.show{opacity:1}
 
 /* BULLE PNJ */
 #npc-bubble{left:50%;bottom:calc(135px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(15,23,42,0.94);border-left:4px solid var(--gold);padding:9px 14px;border-radius:10px;max-width:390px;width:82vw;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.65)}
 #npc-name{font-size:11px;font-weight:800;color:var(--gold);text-transform:uppercase;margin-bottom:2px}
 #npc-text{font-size:12.5px;line-height:1.35;color:#f8fafc}
+
+/* PANNEAU CINÉMATIQUE DE BRIEFING DE MISSION */
+#briefing-modal{background:linear-gradient(to top,rgba(5,8,16,0.92) 0%,rgba(5,8,16,0.35) 55%,transparent 100%);justify-content:flex-end;padding-bottom:13vh;z-index:16}
+.brief-card{background:rgba(15,23,42,0.95);border:1px solid rgba(255,213,79,0.5);border-top:4px solid var(--gold);border-radius:16px;padding:16px 20px;max-width:540px;width:92vw;text-align:left;box-shadow:0 16px 40px rgba(0,0,0,0.85)}
+.brief-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.brief-tag{font-size:10.5px;font-weight:900;letter-spacing:1px;color:var(--gold);background:rgba(255,213,79,0.15);padding:2px 8px;border-radius:6px}
+.brief-pay{font-size:13px;font-weight:900;color:var(--green)}
+.brief-card h3{margin:2px 0 4px;font-size:18px;color:#fff}
+.brief-speaker{font-size:11.5px;font-weight:800;color:#38bdf8;margin-bottom:8px}
+.brief-card p{margin:0 0 10px;font-size:13px;line-height:1.45;color:#e2e8f0;font-style:italic}
+.brief-obj-box{background:rgba(255,255,255,0.07);border-left:3px solid var(--accent);padding:7px 10px;border-radius:6px;font-size:12px;font-weight:800;color:#f8fafc}
 
 /* TOP BUTTONS */
 .top-btn{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,0.3);background:var(--glass);color:#fff;font-size:15px;z-index:8;cursor:pointer}
@@ -66,7 +100,7 @@ canvas{position:fixed;inset:0;display:block}
 
 /* OVERLAYS */
 .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;z-index:12;padding:16px}
-#menu{display:flex;background:radial-gradient(circle at 50% 35%,rgba(36,20,68,0.86),rgba(7,10,18,0.96))}
+#menu{display:flex;background:radial-gradient(circle at 50% 35%,rgba(36,20,68,0.88),rgba(7,10,18,0.97))}
 .flag-bar{display:flex;width:120px;height:6px;border-radius:3px;overflow:hidden;margin-bottom:10px}
 .flag-bar span:nth-child(1){flex:1;background:#007a5e}
 .flag-bar span:nth-child(2){flex:1;background:#ce1126}
@@ -75,21 +109,21 @@ canvas{position:fixed;inset:0;display:block}
 #menu h2{margin:4px 0 14px;font-size:12px;letter-spacing:4px;color:var(--gold);font-weight:800}
 .save-card{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:9px 16px;margin-bottom:14px;font-size:12.5px;color:#cbd5e1;max-width:460px}
 .btn-row{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
-.bt{font:800 14px system-ui;padding:10px 22px;border-radius:26px;border:0;background:linear-gradient(135deg,#ff4081,#f50057);color:#fff;box-shadow:0 4px 0 #880e4f;cursor:pointer}
+.bt{font:800 13.5px system-ui;padding:10px 20px;border-radius:26px;border:0;background:linear-gradient(135deg,#ff4081,#f50057);color:#fff;box-shadow:0 4px 0 #880e4f;cursor:pointer}
 .bt:active{transform:translateY(2px)}
-.bt.sec{background:#1e293b;box-shadow:0 4px 0 #0f172a;font-size:12.5px;padding:9px 16px}
+.bt.sec{background:#1e293b;box-shadow:0 4px 0 #0f172a;font-size:12px;padding:9px 15px}
 .bt.danger{background:#991b1b;box-shadow:0 4px 0 #450a0a;font-size:12px;padding:8px 15px}
 #how{display:none;max-width:620px;font-size:12px;line-height:1.5;color:#e2e8f0;background:rgba(0,0,0,0.75);padding:11px 15px;border-radius:12px;margin-top:12px;border:1px solid rgba(255,255,255,0.15);text-align:left}
 
-/* GRANDE CARTE DE LA VILLE */
-#big-map-modal{background:rgba(6,9,17,0.92);z-index:18}
-.map-box{background:#0f172a;border:1px solid rgba(255,255,255,0.22);border-radius:16px;padding:12px;max-width:94vw;max-height:94vh;display:flex;flex-direction:column;align-items:center;gap:8px}
+/* GRANDE CARTE STRUCTURÉE DE LA VILLE */
+#big-map-modal{background:rgba(6,9,17,0.94);z-index:18}
+.map-box{background:#0f172a;border:1px solid rgba(255,255,255,0.22);border-radius:16px;padding:12px;max-width:95vw;max-height:95vh;display:flex;flex-direction:column;align-items:center;gap:8px}
 .map-header{display:flex;justify-content:space-between;align-items:center;width:100%;gap:12px;text-align:left}
-.map-header h3{margin:0;font-size:15px;color:var(--gold)}
+.map-header h3{margin:0;font-size:14.5px;color:var(--gold)}
 .map-header small{color:#94a3b8;font-size:11px}
 .map-actions{display:flex;gap:6px}
-#big-map{position:static;width:min(68vh,78vw);height:min(68vh,78vw);border-radius:12px;border:2px solid rgba(255,255,255,0.3);background:#0b1220;cursor:crosshair}
-.map-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;font-size:11px;color:#cbd5e1}
+#big-map{position:static;width:min(68vh,80vw);height:min(68vh,80vw);border-radius:12px;border:2px solid rgba(255,255,255,0.35);background:#0b1220;cursor:crosshair}
+.map-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;font-size:10.5px;color:#cbd5e1}
 .map-legend span{display:flex;align-items:center;gap:4px}
 .map-legend i{display:inline-block;width:9px;height:9px;border-radius:50%}
 
@@ -108,7 +142,7 @@ canvas{position:fixed;inset:0;display:block}
 #wasted{background:rgba(30,0,0,0.78);font-size:clamp(40px,12vh,88px);font-weight:900;color:#ff3d3d}
 #rot{background:#090d16;z-index:25;font-size:17px}
 
-/* CONTRÔLES TACTILES STYLE PAYBACK 2 */
+/* CONTRÔLES TACTILES */
 #jz,#lz{position:fixed;bottom:0;height:62%;z-index:5;display:none}
 #jz{left:0;width:45%}
 #lz{right:0;width:55%;height:100%;z-index:4}
@@ -120,13 +154,13 @@ body.t #jz,body.t #lz{display:block}
 .tbtn{position:fixed;z-index:6;border-radius:50%;border:2px solid rgba(255,255,255,0.65);background:rgba(12,17,29,0.78);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;touch-action:none;padding:0;box-shadow:0 4px 14px rgba(0,0,0,0.5)}
 .tbtn.on{background:var(--accent);transform:scale(.92)}
 
-/* BOUTONS À PIED (TIRER, VISER, COURIR/SAUTER, ACTION) */
+/* BOUTONS À PIED */
 .t-fire{right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:80px;height:80px;font-size:31px;background:rgba(211,47,47,0.82)}
 .t-aim{right:calc(112px + env(safe-area-inset-right,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px));width:56px;height:56px;font-size:22px;background:rgba(0,150,136,0.82)}
 .t-run{right:calc(26px + env(safe-area-inset-right,0px));bottom:calc(114px + env(safe-area-inset-bottom,0px));width:62px;height:62px;font-size:25px;background:rgba(25,118,210,0.8)}
 .t-act{right:calc(114px + env(safe-area-inset-right,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:62px;height:62px;font-size:25px}
 
-/* BOUTONS EN VOITURE (ACCÉLÉRER, FREINER/RECULER, TIRER, SORTIR) */
+/* BOUTONS EN VOITURE */
 .t-gas{right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:82px;height:82px;font-size:31px;font-weight:900;background:rgba(0,200,83,0.8)}
 .t-brake{right:calc(116px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:72px;height:72px;font-size:27px;font-weight:900;background:rgba(211,47,47,0.8)}
 .t-carfire{right:calc(104px + env(safe-area-inset-right,0px));bottom:calc(106px + env(safe-area-inset-bottom,0px));width:56px;height:56px;font-size:22px;background:rgba(255,145,0,0.82)}
