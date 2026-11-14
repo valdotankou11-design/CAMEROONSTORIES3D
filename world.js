@@ -428,6 +428,18 @@ function buildVehicle(col,type){
     const spare=cyl(0.4,0.4,0.2,14,0x0f172a,0,1.02,-2.56,g);spare.rotation.x=PI/2;
     const hub=cyl(0.24,0.24,0.22,10,chromeMat,0,1.02,-2.56,g);hub.rotation.x=PI/2;
   }
+  if(type==='van'){
+    bx(2.12,1.0,1.3,bodyMat,0,1.55,-1.7,g);                                   // caisse haute (minibus)
+    bx(2.14,0.22,2.2,0x16a34a,0,1.2,-1.3,g);                                   // bande verte
+    bx(0.04,0.5,0.9,glassMat,-1.07,1.65,-1.7,g);bx(0.04,0.5,0.9,glassMat,1.07,1.65,-1.7,g);
+    bx(1.9,0.08,1.4,chromeMat,0,2.12,-1.7,g);                                  // galerie
+  }
+  if(type==='pickup'){
+    for(const sx of[-1.0,1.0])bx(0.1,0.38,1.4,bodyMat,sx,1.22,-1.78,g);       // ridelles
+    bx(2.0,0.38,0.08,bodyMat,0,1.22,-2.44,g);                                  // hayon
+    bx(1.4,0.55,0.9,0x92400e,0,1.18,-1.8,g);                                   // chargement
+    bx(1.0,0.4,0.6,0xd97706,0.2,1.65,-1.9,g);
+  }
   if(type==='taxi'){
     bx(2.16,0.13,4.86,trimMat,0,0.82,0,g);
     bx(0.84,0.18,0.30,trimMat,0,1.82,-0.13,g);
@@ -530,6 +542,34 @@ function createChunk(cx,cz){
     bx(1.4,2.4,1.0,0xef4444,21,1.5,25,G);
     bx(1.4,2.4,1.0,0x2563eb,29,1.5,25,G);
     addTree(G,55,55,ds2,false);
+    scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
+  }
+
+  if(cx===5&&cz===3){   // MARCHÉ
+    bx(60,0.3,60,0x8b6b4a,40,0.15,40,G);
+    const awn=[0xdc2626,0x2563eb,0x16a34a,0xea580c,0xfacc15,0xa855f7];
+    for(let r=0;r<3;r++)for(let k=0;k<4;k++){
+      const sx=16+k*16,sz=18+r*22,ac=awn[(r*4+k)%awn.length];
+      for(const[px,pz]of[[-3,-2],[3,-2],[-3,2],[3,2]])cyl(0.1,0.1,3,6,0x5d4037,sx+px,1.6,sz+pz,G);
+      bx(7.4,0.18,5.2,ac,sx,3.2,sz,G);
+      bx(5.4,0.9,2.2,0x78350f,sx,0.75,sz,G);
+      for(let q=0;q<3;q++)bx(0.7,0.55,0.7,[0xf97316,0x84cc16,0xef4444][q],sx-1.8+q*1.8,1.45,sz,G);
+      bs.push([ox+sx-3.2,oz+sz-1.3,ox+sx+3.2,oz+sz+1.3]);
+    }
+    scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
+  }
+  if((cx===1&&cz===2)||(cx===7&&cz===7)||(cx===2&&cz===7)){   // QUARTIER POPULAIRE
+    bx(60,0.3,60,0x7c5b3b,40,0.15,40,G);
+    for(let r=0;r<3;r++)for(let k=0;k<3;k++){
+      const hh=hs(cx*7+r,cz*13+k),hx=17+k*23,hz=17+r*23,wd=8+hh%4,dp=7+(hh>>3)%3,ht=3.2+(hh>>5)%2*0.6;
+      const wall=[0xd6b98c,0xbfa27a,0xe7c9a0,0xa7c4b5][hh%4];
+      bx(wd,ht,dp,wall,hx,ht/2+0.3,hz,G);
+      const roof=bx(wd+1,0.2,dp+1,0x9a3412,hx,ht+0.5,hz,G);roof.rotation.z=0.1;   // toit en tôle
+      bx(1.2,2.1,0.12,0x1f2937,hx,1.35,hz+dp/2+0.06,G);
+      bx(1.0,0.9,0.12,0x38bdf8,hx+2.4,2.0,hz+dp/2+0.06,G);
+      bs.push([ox+hx-wd/2,oz+hz-dp/2,ox+hx+wd/2,oz+hz+dp/2]);
+    }
+    addTree(G,8,40,ds2,true);addTree(G,72,40,ds2,true);
     scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
   }
 

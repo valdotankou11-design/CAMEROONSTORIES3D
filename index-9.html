@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>CAMEROUN STORIES 3D · Yaoundé</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- RÉTICULE DE VISÉE RAYCAST 3D -->
+<div id="crosshair">
+  <div class="ch-ring"></div>
+  <div class="ch-dot"></div>
+</div>
+
+<!-- BANDES CINÉMATIQUES LORS DES DIALOGUES -->
+<div class="cine-bar" id="cine-top"></div>
+<div class="cine-bar" id="cine-bot"></div>
+
+<!-- RADAR SYNCHRONISÉ + ÉTOILES DE RECHERCHE -->
+<div class="hud" id="radar-wrap" onclick="openBigMap()" title="Ouvrir la carte de Yaoundé">
+  <canvas id="radar" width="124" height="124"></canvas>
+  <div id="map-pill">CARTE</div>
+</div>
+
+<div class="hud" id="wanted-box">
+  <div id="stars">☆☆☆☆☆</div>
+  <div id="wanted-label">INDICE DE RECHERCHE</div>
+</div>
+
+<!-- JAUGES DU JOUEUR & QUARTIER -->
+<div class="hud" id="hud-tl">
+  <div class="stat-row"><span class="stat-lbl">SAN</span><div class="bar-bg"><div id="hp-bar"></div></div></div>
+  <div class="stat-row"><span class="stat-lbl">ARM</span><div class="bar-bg"><div id="ar-bar"></div></div></div>
+  <div class="stat-row"><span class="stat-lbl">END</span><div class="bar-bg"><div id="st-bar"></div></div></div>
+  <div id="zone-tag">CENTRE-VILLE · BD DU 20 MAI</div>
+</div>
+
+<!-- HUD SUPÉRIEUR DROIT : ARGENT, ARME & MUNITIONS -->
+<div class="hud" id="hud-tr">
+  <div class="tr-top">
+    <span id="clock-tag">14:00</span>
+    <span id="cash">500 FCFA</span>
+  </div>
+  <div id="weapon-box" title="Changer d'arme">
+    <div id="weapon-name">Pistolet 9mm</div>
+    <div id="ammo-count">12 / ∞</div>
+  </div>
+</div>
+
+<!-- COMPTEUR DE VITESSE EN VÉHICULE -->
+<div class="hud" id="speedo">
+  <span id="speed-val">0</span> <small>KM/H</small>
+  <div class="car-hp-bg"><div id="car-hp-bar"></div></div>
+</div>
+
+<!-- FICHE TACTIQUE DE MISSION -->
+<div class="hud" id="mission-card">
+  <div class="mc-header">
+    <span id="mc-badge">CONTRAT ACTIF</span>
+    <span id="mc-timer">60s</span>
+  </div>
+  <div id="mc-title">Le Contrat du Monument</div>
+  <div id="mc-desc">Rejoins le point doré (M) pour rencontrer le contact.</div>
+  <div class="mc-footer">
+    <span id="mc-dist">120 m</span>
+    <span id="mc-reward">+500 FCFA</span>
+  </div>
+</div>
+
+<div class="hud" id="toast"></div>
+
+<!-- ACTIVITÉ SECONDAIRE EN COURS -->
+<div class="hud" id="act-card"><div id="act-title"></div><div id="act-info"></div></div>
+
+<!-- SOUS-TITRES DE CINÉMATIQUE (toucher pour passer) -->
+<div id="cine-sub"><div id="cine-name"></div><div id="cine-text"></div><div id="cine-skip">Toucher pour passer ▸</div></div>
+
+<!-- DIALOGUE CONTEXTUEL PNJ -->
+<div class="hud" id="npc-bubble">
+  <div id="npc-name">Moussa · Taximan</div>
+  <div id="npc-text">Bienvenue à Yaoundé.</div>
+</div>
+
+<!-- PANNEAU CINÉMATIQUE DE BRIEFING -->
+<div class="overlay" id="briefing-modal">
+  <div class="brief-card">
+    <div class="brief-top">
+      <span class="brief-tag" id="brief-chapter">CHAPITRE 1</span>
+      <span class="brief-pay" id="brief-reward">+500 FCFA</span>
+    </div>
+    <h3 id="brief-title">Titre de la Mission</h3>
+    <div class="brief-speaker" id="brief-speaker">Le Patron · Caïd du Boulevard</div>
+    <p id="brief-text">Dialogue du contact...</p>
+    <div class="brief-obj-box" id="brief-obj">Objectif : ...</div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="bt primary" id="btn-accept-mission">ACCEPTER LE CONTRAT</button>
+      <button class="bt ghost" id="btn-decline-mission">PLUS TARD</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOUTONS SYSTÈME HAUT DROITE -->
+<button class="top-btn" id="btn-pause" title="Pause">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+</button>
+<button class="top-btn" id="btn-radio" title="Radio FM">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-4"/><circle cx="8" cy="14" r="2"/><path d="M13 12h5M13 16h5"/></svg>
+</button>
+
+<!-- ZONES TACTILES -->
+<div id="lz"></div>
+<div id="jz"></div>
+<div id="jb"><div id="jk"></div></div>
+
+<!-- CONTRÔLES TACTILES À PIED (DESIGN STUDIO SOBRE) -->
+<div id="controls-foot" class="t-group">
+  <button class="tbtn t-fire" data-k="fire" title="Tirer">
+    <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+  </button>
+  <button class="tbtn t-aim" data-k="aim" title="Viser">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"/><circle cx="12" cy="12" r="2"/></svg>
+  </button>
+  <button class="tbtn t-reload" data-k="reload" title="Recharger">
+    <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+  </button>
+  <button class="tbtn t-run" data-k="run" title="Maintenir: Courir · Tap: Sauter">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M13 4v16M7 10l6-6 6 6"/></svg>
+  </button>
+  <button class="tbtn t-weapon" data-k="weapon" title="Changer d'arme (poings / pistolet)">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9h12l2 2h4v3h-6l-1 3H9l1-3H3z"/></svg>
+  </button>
+  <button class="tbtn t-act" data-k="act" title="Interagir">
+    <span id="act-label">ENTRER</span>
+  </button>
+</div>
+
+<!-- CONTRÔLES TACTILES EN VÉHICULE -->
+<div id="controls-car" class="t-group" style="display:none">
+  <button class="tbtn t-gas" data-k="gas" title="Accélérer">
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 5l8 12H4z"/></svg>
+  </button>
+  <button class="tbtn t-brake" data-k="brake" title="Freiner / Marche arrière">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 19L4 7h16z"/></svg>
+  </button>
+  <button class="tbtn t-carfire" data-k="fire" title="Tirer en roulant">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
+  </button>
+  <button class="tbtn t-exit" data-k="act" title="Sortir du véhicule">
+    <span style="font-size:10px;font-weight:900;letter-spacing:.5px">SORTIR</span>
+  </button>
+</div>
+
+<!-- GRANDE CARTE STRUCTURÉE DE YAOUNDÉ -->
+<div class="overlay" id="big-map-modal">
+  <div class="map-box">
+    <div class="map-header">
+      <div>
+        <h3>CARTE DE YAOUNDÉ & REPÈRES GPS</h3>
+        <small id="map-cursor-info">Touche n'importe quel point de la ville pour placer un itinéraire GPS</small>
+      </div>
+      <div class="map-actions">
+        <button class="bt ghost" onclick="clearCustomWaypoint()">EFFACER GPS</button>
+        <button class="bt primary" onclick="closeBigMap()">FERMER</button>
+      </div>
+    </div>
+    <canvas id="big-map" width="560" height="560"></canvas>
+    <div class="map-legend">
+      <span><i style="background:#ef4444"></i> Position</span>
+      <span><i style="background:#eab308"></i> Mission (M)</span>
+      <span><i style="background:#22c55e"></i> Repère GPS</span>
+      <span><i style="background:#14b8a6"></i> Villas</span>
+      <span><i style="background:#38bdf8"></i> Armurerie</span>
+      <span><i style="background:#a855f7"></i> Salle de Sport</span>
+      <span><i style="background:#f97316"></i> Restaurant / Station</span>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAYS -->
+<div class="overlay" id="wasted">NEUTRALISÉ</div>
+<div class="overlay" id="rot">
+  <div style="font-size:18px;font-weight:800;margin-bottom:8px">ORIENTATION PAYSAGE RECOMMANDÉE</div>
+  <div style="font-size:13px;color:#94a3b8">Pivote ton écran pour une visibilité optimale.</div>
+  <button class="bt ghost" style="margin-top:16px" onclick="document.body.classList.add('force')">CONTINUER EN PORTRAIT</button>
+</div>
+
+<!-- ARMURERIE & ÉQUIPEMENT -->
+<div class="overlay" id="shop-modal">
+  <div class="shop-box">
+    <div class="shop-head">
+      <div>
+        <h3>ARMURERIE TACTIQUE & ÉQUIPEMENT</h3>
+        <p>Sélectionne tes armes, chargeurs et protections balistiques.</p>
+      </div>
+      <button class="bt ghost" onclick="closeShop()">FERMER</button>
+    </div>
+    <div class="shop-grid">
+      <div class="shop-item" onclick="buyItem('smg')">
+        <h4>Mitraillette Uzi 9mm</h4>
+        <p>Cadence automatique rapide · Chargeur 30 coups.</p>
+        <div class="shop-price">450 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('shotgun')">
+        <h4>Fusil à Pompe Calibre 12</h4>
+        <p>Gerbe de 5 plombs dévastatrice à courte portée.</p>
+        <div class="shop-price">750 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('rifle')">
+        <h4>Fusil d'Assaut AK-47</h4>
+        <p>Haute vélocité et perforation · Chargeur 30 coups.</p>
+        <div class="shop-price">1100 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('sniper')">
+        <h4>Fusil de Précision M24</h4>
+        <p>Zoom longue portée et dégâts critiques élevés.</p>
+        <div class="shop-price">1600 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('ammo')">
+        <h4>Caisse de Munitions (+120)</h4>
+        <p>Recharge toutes tes réserves de munitions.</p>
+        <div class="shop-price">150 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('armor')">
+        <h4>Gilet Pare-Balles Kevlar</h4>
+        <p>Protection balistique complète (100%).</p>
+        <div class="shop-price">300 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('heal')">
+        <h4>Trousse de Premiers Secours</h4>
+        <p>Restaure intégralement ta santé (100%).</p>
+        <div class="shop-price">150 FCFA</div>
+      </div>
+      <div class="shop-item" onclick="buyItem('clear')">
+        <h4>Effacement Casier Police</h4>
+        <p>Annule immédiatement tout avis de recherche.</p>
+        <div class="shop-price">400 FCFA</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ÉCRAN TITRE SOBRE FAÇON STUDIO -->
+<div class="overlay" id="menu">
+  <div class="menu-panel">
+    <div class="flag-bar"><span></span><span></span><span></span></div>
+    <h1>CAMEROUN STORIES 3D</h1>
+    <h2>ÉDITION YAOUNDÉ · MONDE OUVERT</h2>
+    <div class="save-card" id="save-summary">Profil local prêt</div>
+    <div class="btn-row">
+      <button class="bt primary" id="btn-play">CONTINUER LA PARTIE</button>
+      <button class="bt ghost" id="btn-how">COMMANDES</button>
+      <button class="bt danger" id="btn-reset">NOUVELLE PARTIE</button>
+    </div>
+    <div id="how">
+      <b>Déplacements & Combat :</b> Joystick gauche = marcher · Glisser à droite = caméra · <b>Viser</b> = zoom épaule + laser · <b>Tirer</b> = tir balistique · <b>Recharger (R)</b> = changer de chargeur · Touche le boîtier d'arme en haut à droite (ou <b>Tab</b>) pour changer d'arme.<br>
+      <b>Interactions & Lieux :</b> Approche un véhicule et appuie sur <b>ENTRER</b> pour ouvrir la portière et déloger le conducteur. Entre dans les <b>Villas</b>, la <b>Salle de Sport</b> (sac de frappe), le <b>Restaurant</b> ou l'<b>Armurerie</b>.
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="world.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
