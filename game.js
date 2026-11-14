@@ -1,8 +1,9 @@
 'use strict';
 const $=id=>document.getElementById(id);
 
-// ===== CATALOGUE DES ARMES (CHARGEURS, CADENCE, PORTÉE, BALISTIQUE)
+// ===== CATALOGUE DES ARMES (MAINS NUES PAR DÉFAUT + ARMES À FEU)
 const WEAPONS={
+  fist:{name:'Mains nues',melee:true,cd:0.36,dmg:22,range:2.4},
   pistol:{name:'Pistolet 9mm',magSize:12,cd:0.25,dmg:32,spd:135,pellets:1,spread:0.01,infiniteReserve:true},
   smg:{name:'Mitraillette Uzi',magSize:30,cd:0.095,dmg:19,spd:130,pellets:1,spread:0.045,infiniteReserve:false},
   shotgun:{name:'Fusil à Pompe',magSize:8,cd:0.65,dmg:24,spd:115,pellets:5,spread:0.11,infiniteReserve:false},
@@ -10,11 +11,11 @@ const WEAPONS={
   sniper:{name:'Fusil Sniper M24',magSize:5,cd:0.85,dmg:120,spd:210,pellets:1,spread:0.002,infiniteReserve:false}
 };
 
-// ===== SAUVEGARDE LOCALE
-const SAVE_KEY='cameroun_stories_studio_v7';
+// ===== SAUVEGARDE LOCALE (DÉMARRE MAINS NUES AVEC LE PISTOLET DANS L'INVENTAIRE)
+const SAVE_KEY='cameroun_stories_studio_v8';
 const defaultSave=()=>({
   cash:650,hp:100,armor:50,maxStamina:100,missionIdx:0,
-  weapons:['pistol','smg'],curWeapon:'pistol',
+  weapons:['fist','pistol'],curWeapon:'fist',
   mag:{pistol:12,smg:30,shotgun:8,rifle:30,sniper:5},
   reserve:{smg:90,shotgun:24,rifle:90,sniper:15},
   px:3*CS+18,pz:3*CS+12
@@ -26,6 +27,7 @@ function loadSave(){
     if(raw){
       const parsed=JSON.parse(raw);
       SAVE=Object.assign(defaultSave(),parsed);
+      if(!SAVE.weapons.includes('fist'))SAVE.weapons.unshift('fist');
       SAVE.mag=Object.assign(defaultSave().mag,parsed.mag||{});
       SAVE.reserve=Object.assign(defaultSave().reserve,parsed.reserve||{});
     }
@@ -45,7 +47,7 @@ function updateSaveUI(){
   $('save-summary').innerHTML=`Profil : <b>${SAVE.cash} FCFA</b> · ${m?m.title:'Mode Libre Yaoundé'}`;
 }
 
-// ===== AUDIO PROCÉDURAL (TIRS, RECHARGEMENT, BRIS DE VITRE, BOXE, RADIO)
+// ===== AUDIO PROCÉDURAL (TIRS, COUPS DE POING, RECHARGEMENT, BRIS DE VITRE, RADIO)
 let AC=null,radioIdx=0,radioTimer=0,radioStep=0;
 const RADIOS=[
   {name:'CRTV FM · Makossa',tempo:0.24,notes:[261.6,329.6,392.0,329.6,440.0,392.0,329.6,293.7]},
@@ -74,6 +76,14 @@ function playGunshot(wep){
     const f=wep==='rifle'?460:wep==='smg'?530:380;
     playTone(f,wep==='smg'?0.06:0.11,'sawtooth',0.06,60);
     playTone(135,0.09,'square',0.04,35);
+  }
+}
+function playPunchSound(hit=false){
+  if(hit){
+    playTone(105,0.13,'triangle',0.09,32);
+    playTone(65,0.15,'sine',0.08,28);
+  }else{
+    playTone(210,0.08,'sine',0.035,75);
   }
 }
 function playGlassShatter(){
@@ -119,7 +129,6 @@ function buildRoomShell(ix,iz,w,d,floorCol,wallCol,ceilCol){
   bx(w,0.3,d,ceilCol,ix,5.4,iz,g);
   cyl(0.08,0.08,0.8,8,0x334155,ix,5.0,iz,g);
   cyl(0.65,0.45,0.25,12,new THREE.MeshBasicMaterial({color:0xfef08a}),ix,4.55,iz,g);
-  // Porte de sortie naturelle en bois
   bx(2.2,3.4,0.25,0x78350f,ix,1.85,iz+d/2-0.25,g);
   bx(2.5,0.25,0.35,new THREE.MeshBasicMaterial({color:0x22c55e}),ix,3.7,iz+d/2-0.25,g);
   return g;
@@ -149,9 +158,7 @@ interiorNPCs.push({type:'villa',m:villaResident,x:IX_VILLA+2.5,z:IZ_VILLA-1.5,h:
 
 // 2. SALLE DE SPORT & BOXE
 const gymGrp=buildRoomShell(IX_GYM,IZ_GYM,20,18,0x1e293b,0x334155,0x0f172a);
-// Tapis de ring bleu
 bx(8.0,0.06,8.0,0x1d4ed8,IX_GYM-2.5,0.18,IZ_GYM-1.5,gymGrp);
-// Sac de frappe suspendu articulé !
 cyl(0.06,0.06,1.6,8,0x94a3b8,IX_GYM-2.5,4.6,IZ_GYM-1.5,gymGrp);
 const punchingBag=new THREE.Group();
 punchingBag.position.set(IX_GYM-2.5,3.8,IZ_GYM-1.5);
@@ -159,20 +166,17 @@ cyl(0.36,0.36,1.65,14,0xdc2626,0,-1.1,0,punchingBag);
 cyl(0.38,0.38,0.22,14,0x111827,0,-0.35,0,punchingBag);
 cyl(0.38,0.38,0.22,14,0x111827,0,-1.85,0,punchingBag);
 gymGrp.add(punchingBag);
-// Bancs de musculation & haltères
 bx(3.2,0.55,0.9,0x0f172a,IX_GYM+5.5,0.42,IZ_GYM-4.5,gymGrp);
 cyl(0.05,0.05,2.4,8,0xe2e8f0,IX_GYM+5.5,1.25,IZ_GYM-4.5,gymGrp);
 bx(3.2,0.55,0.9,0x0f172a,IX_GYM+5.5,0.42,IZ_GYM+0.5,gymGrp);
 INTERIORS.gym.obs=[[IX_GYM+3.8,IZ_GYM-5.2,IX_GYM+7.2,IZ_GYM-3.8],[IX_GYM+3.8,IZ_GYM-0.2,IX_GYM+7.2,IZ_GYM+1.2]];
 const gymCoach=buildHuman(0xeab308,0x5c3c24,'gym');
-interiorNPCs.push({type:'gym',m:gymCoach,x:IX_GYM+2.0,z:IZ_GYM-2.5,h:-PI/3,name:'Coach Samuel · Boxe & Fitness',line:'Approche le sac de frappe et appuie sur BOXER pour renforcer ton endurance !'});
+interiorNPCs.push({type:'gym',m:gymCoach,x:IX_GYM+2.0,z:IZ_GYM-2.5,h:-PI/3,name:'Coach Samuel · Boxe & Fitness',line:'Frappe le sac de boxe à mains nues pour augmenter ton endurance !'});
 
 // 3. RESTAURANT LE MBOA
 const restoGrp=buildRoomShell(IX_RESTO,IZ_RESTO,20,18,0xfef3c7,0x7c2d12,0x451a03);
-// Comptoir de service
 bx(8.5,1.15,1.4,0x78350f,IX_RESTO,0.72,IZ_RESTO-4.8,restoGrp);
 bx(8.7,0.12,1.6,0xfacc15,IX_RESTO,1.32,IZ_RESTO-4.8,restoGrp);
-// Tables et chaises clients
 for(const[tx,tz]of[[-5.2,-0.5],[5.2,-0.5],[-5.2,4.2],[5.2,4.2]]){
   cyl(1.1,1.1,0.1,14,0x92400e,IX_RESTO+tx,0.95,IZ_RESTO+tz,restoGrp);
   cyl(0.14,0.14,0.8,8,0x451a03,IX_RESTO+tx,0.55,IZ_RESTO+tz,restoGrp);
@@ -181,7 +185,7 @@ INTERIORS.restaurant.obs=[[IX_RESTO-4.5,IZ_RESTO-5.6,IX_RESTO+4.5,IZ_RESTO-4.0]]
 const restoChef=buildHuman(0xf8fafc,0x6f4e37,'chef');
 const restoClient=buildHuman(0x3b82f6,0x8d5524,'student');
 interiorNPCs.push(
-  {type:'restaurant',m:restoChef,x:IX_RESTO,z:IZ_RESTO-6.4,h:0,name:'Chef Nadine · Restaurant Le Mboa',line:'Bienvenue ! Approche le comptoir et appuie sur COMMANDER (150 FCFA) pour un bon Ndolé !'},
+  {type:'restaurant',m:restoChef,x:IX_RESTO,z:IZ_RESTO-6.4,h:0,name:'Chef Nadine · Restaurant Le Mboa',line:'Bienvenue ! Approche le comptoir et appuie sur MANGER (150 FCFA) pour un bon Ndolé !'},
   {type:'restaurant',m:restoClient,x:IX_RESTO-5.2,z:IZ_RESTO-1.6,h:0,name:'Client · Habitué du Mboa',line:'Le poisson braisé et le Ndolé d’ici te remettent sur pied en 2 secondes !'}
 );
 
@@ -189,7 +193,6 @@ interiorNPCs.push(
 const armoryGrp=buildRoomShell(IX_ARMORY,IZ_ARMORY,18,16,0x1e293b,0x0f172a,0x090d12);
 bx(8.0,1.15,1.3,0x334155,IX_ARMORY,0.72,IZ_ARMORY-3.8,armoryGrp);
 bx(8.2,0.12,1.5,0x38bdf8,IX_ARMORY,1.32,IZ_ARMORY-3.8,armoryGrp);
-// Râteliers d'armes muraux exposés
 for(let r=0;r<4;r++){
   bx(2.2,0.12,0.22,0x090d12,IX_ARMORY-4.5+r*3.0,2.5,IZ_ARMORY-7.6,armoryGrp);
   bx(2.2,0.12,0.22,0x090d12,IX_ARMORY-4.5+r*3.0,1.8,IZ_ARMORY-7.6,armoryGrp);
@@ -236,7 +239,7 @@ const STORY_MISSIONS=[
     contactRole:'bir',contactShirt:0x15803d,
     cx:2*CS+20,cz:6*CS+10,
     type:'combat',count:4,tx:4*CS+14,tz:3*CS+14,time:95,reward:1100,wantedOnStart:1,
-    briefing:'"Un gang rival rackette les taximen au carrefour central. Utilise ton viseur laser et neutralise-les tous."',
+    briefing:'"Un gang rival rackette les taximen au carrefour central. Sors ton arme en haut à droite et neutralise-les tous."',
     objective:'Élimine les 4 gangsters armés au carrefour central.'
   },
   {
@@ -314,7 +317,7 @@ const NPC_PROFILES=[
   {role:'student',name:'Brice · Étudiant Ngoa-Ekellé',shirt:0x3b82f6,skin:0x8d5524,
    getReply:(ctx)=>{
      if(ctx.cash>=750)return `Avec ${ctx.cash} FCFA, tu peux t'offrir le Fusil à Pompe ou l'AK-47 à l'armurerie !`;
-     return 'Pense à recharger ton chargeur avec R avant d’engager un combat.';
+     return 'Touche Mains nues en haut à droite pour dégainer ton Pistolet 9mm ou rengainer.';
    }}
 ];
 
@@ -323,7 +326,7 @@ let S='menu',interiorType=null,ret={x:0,z:0},tm=0,dayTime=14.0,cars=[],peds=[],e
 let customWaypoint=null;
 const P={
   x:3*CS+18,z:3*CS+12,h:0,vy:0,y:0,hp:100,armor:50,stamina:100,car:null,cash:650,
-  cd:0,inv:0,wk:0,enteringCar:null,reloadTimer:0,punchTimer:0,bagSwing:0,
+  cd:0,inv:0,wk:0,enteringCar:null,reloadTimer:0,punchTimer:0,comboStep:0,bagSwing:0,
   m:buildHuman(0xe11d48,0x7b5438,'player')
 };
 
@@ -557,7 +560,7 @@ function drawBigMap(){
   ctx.restore();
 }
 
-// ===== ARMURERIE & RECHARGEMENT D'ARMES
+// ===== ARMURERIE, SÉLECTION D'ARMES & RECHARGEMENT
 function openShop(){S='shop';$('shop-modal').style.display='flex';}
 function closeShop(){S='play';$('shop-modal').style.display='none';}
 window.buyItem=function(id){
@@ -569,7 +572,7 @@ window.buyItem=function(id){
     SAVE.reserve.smg+=120;SAVE.reserve.shotgun+=32;SAVE.reserve.rifle+=120;SAVE.reserve.sniper+=20;
     updateWeaponHUD();showToast('Caisse de munitions récupérée');playReloadSound();
   }else if(id==='clear'&&P.cash>=400){P.cash-=400;stars=0;clearCopsOnFoot();showToast('Casier judiciaire effacé');playTone(520,0.3,'sine');}
-  else if(WEAPONS[id]){
+  else if(WEAPONS[id]&&!WEAPONS[id].melee){
     const prices={smg:450,shotgun:750,rifle:1100,sniper:1600};
     const cost=prices[id];
     if(P.cash<cost){showToast('Fonds insuffisants');playTone(160,0.2,'sawtooth');return;}
@@ -584,17 +587,17 @@ window.buyItem=function(id){
 };
 
 window.switchWeapon=function(){
-  if(SAVE.weapons.length<2){showToast('Aucune autre arme débloquée');return;}
+  if(SAVE.weapons.length<2)return;
   P.reloadTimer=0;
   const idx=(SAVE.weapons.indexOf(SAVE.curWeapon)+1)%SAVE.weapons.length;
   SAVE.curWeapon=SAVE.weapons[idx];
   updateWeaponHUD();
-  showToast(`Arme : ${WEAPONS[SAVE.curWeapon].name}`);
+  showToast(WEAPONS[SAVE.curWeapon].melee?'Mains nues (Combat au corps à corps)':`Arme équipée : ${WEAPONS[SAVE.curWeapon].name}`);
 };
 
 function reloadWeapon(){
   const id=SAVE.curWeapon,w=WEAPONS[id];
-  if(P.reloadTimer>0)return;
+  if(w.melee||P.reloadTimer>0)return;
   const cur=SAVE.mag[id]||0;
   if(cur>=w.magSize)return;
   if(!w.infiniteReserve&&(SAVE.reserve[id]||0)<=0){
@@ -609,6 +612,7 @@ function reloadWeapon(){
 
 function finishReload(){
   const id=SAVE.curWeapon,w=WEAPONS[id];
+  if(w.melee)return;
   const need=w.magSize-(SAVE.mag[id]||0);
   if(w.infiniteReserve){
     SAVE.mag[id]=w.magSize;
@@ -623,17 +627,27 @@ function finishReload(){
 function updateWeaponHUD(){
   const id=SAVE.curWeapon,w=WEAPONS[id];
   $('weapon-name').textContent=w.name;
-  if(P.reloadTimer>0){
+  const isUnarmed=!!w.melee;
+  if(isUnarmed){
+    $('ammo-count').textContent='POINGS';
+  }else if(P.reloadTimer>0){
     $('ammo-count').textContent='RECHARGEMENT...';
   }else{
     const cur=SAVE.mag[id]||0;
     const res=w.infiniteReserve?'∞':(SAVE.reserve[id]||0);
     $('ammo-count').textContent=`${cur} / ${res}`;
   }
-  P.m.userData.gun.visible=!P.car&&P.punchTimer<=0;
+  const rBtn=$('btn-reload-touch');
+  if(rBtn)rBtn.style.display=isUnarmed?'none':'flex';
+  const iFist=$('icon-fist'),iGun=$('icon-gun');
+  if(iFist&&iGun){
+    iFist.style.display=isUnarmed?'block':'none';
+    iGun.style.display=isUnarmed?'none':'block';
+  }
+  P.m.userData.gun.visible=!P.car&&!isUnarmed&&P.punchTimer<=0;
 }
 
-// ===== ENTRÉES CLAVIER & TACTILE
+// ===== ENTRÉES CLAVIER, SOURIS & TACTILE
 const KB={},B={fire:0,aim:0,run:0,gas:0,brake:0},jv={m:0,x:0,y:0};
 let runTapTime=0;
 
@@ -643,6 +657,10 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyR')reloadWeapon();
   if(e.code==='KeyM'){if(S==='map')closeBigMap();else openBigMap();}
   if(e.code==='Tab'){e.preventDefault();switchWeapon();}
+  if(e.code.startsWith('Digit')){
+    const n=parseInt(e.code.replace('Digit',''),10)-1;
+    if(SAVE.weapons[n]){SAVE.curWeapon=SAVE.weapons[n];P.reloadTimer=0;updateWeaponHUD();showToast(WEAPONS[SAVE.curWeapon].name);}
+  }
   if(e.code==='KeyT')cycleRadio();
   if(e.code==='KeyH'&&P.car)playHorn();
   if(e.code==='KeyC'&&!P.car)doJump();
@@ -650,8 +668,15 @@ addEventListener('keydown',e=>{
   if(e.code.startsWith('Arrow')||e.code==='Space')e.preventDefault();
 });
 addEventListener('keyup',e=>KB[e.code]=0);
-addEventListener('mousedown',e=>{if(e.button===2&&S==='play')B.aim=1;});
-addEventListener('mouseup',e=>{if(e.button===2)B.aim=0;});
+ren.domElement.addEventListener('mousedown',e=>{
+  if(S!=='play')return;
+  if(e.button===0)B.fire=1;
+  if(e.button===2)B.aim=1;
+});
+addEventListener('mouseup',e=>{
+  if(e.button===0)B.fire=0;
+  if(e.button===2)B.aim=0;
+});
 addEventListener('contextmenu',e=>e.preventDefault());
 
 function cycleRadio(){
@@ -694,7 +719,7 @@ function lookCam(dx,dy){cy-=dx*0.0065;cp=cl(cp+dy*0.0045,0.08,1.05);}
 lz.onpointerdown=e=>{lid=e.pointerId;lz.setPointerCapture(e.pointerId);lp=[e.clientX,e.clientY];};
 lz.onpointermove=e=>{if(e.pointerId!==lid)return;lookCam(e.clientX-lp[0],e.clientY-lp[1]);lp=[e.clientX,e.clientY];};
 lz.onpointerup=lz.onpointercancel=()=>{lid=null};
-ren.domElement.onpointermove=e=>{if(e.buttons&1)lookCam(e.movementX,e.movementY);};
+ren.domElement.onpointermove=e=>{if(e.buttons&2||e.buttons&4)lookCam(e.movementX,e.movementY);};
 
 document.querySelectorAll('.tbtn').forEach(b=>{
   const k=b.dataset.k;
@@ -716,7 +741,17 @@ document.querySelectorAll('.tbtn').forEach(b=>{
 $('btn-how').onclick=()=>{const h=$('how');h.style.display=h.style.display==='block'?'none':'block';};
 $('btn-pause').onclick=togglePause;
 $('btn-radio').onclick=cycleRadio;
-$('btn-reset').onclick=()=>{localStorage.removeItem(SAVE_KEY);SAVE=defaultSave();updateSaveUI();showToast('Nouvelle partie prête');};
+
+// BOUTON NOUVELLE PARTIE : RÉINITIALISE ET LANCE IMMÉDIATEMENT LA NOUVELLE PARTIE
+$('btn-reset').onclick=()=>{
+  initAudio();
+  localStorage.removeItem(SAVE_KEY);
+  SAVE=defaultSave();
+  writeSave();
+  startGame();
+  showToast('Nouvelle partie démarrée');
+};
+
 $('btn-play').onclick=()=>{
   initAudio();
   if(S==='pause'){S='play';$('menu').style.display='none';return;}
@@ -731,7 +766,7 @@ function togglePause(){
   else if(S==='pause'){S='play';$('menu').style.display='none';}
 }
 
-// ===== BRIS DE VITRES (VOITURES & BÂTIMENTS)
+// ===== BRIS DE VITRES
 function spawnGlassShards(wx,wy,wz,count=10){
   playGlassShatter();
   for(let k=0;k<count;k++){
@@ -936,7 +971,7 @@ function explodeCar(c){
   c.dead=1;scene.remove(c.m);
 }
 
-// ===== INTERACTIONS INTELLIGENTES (PORTES, SAC DE FRAPPE, RESTAURANT, ARMURERIE, VÉHICULES)
+// ===== INTERACTIONS INTELLIGENTES
 function enterInterior(type,doorObj){
   interiorType=type;
   ret={x:doorObj.x,z:doorObj.z+1.6};
@@ -945,35 +980,35 @@ function enterInterior(type,doorObj){
   if(type==='villa'){roomCash.visible=true;roomMed.visible=true;}
   const labels={
     villa:'Villa résidentielle : récupère le cash et les soins.',
-    gym:'Salle de Sport : approche le sac de frappe pour t’entraîner.',
+    gym:'Salle de Sport : frappe le sac de boxe pour t’entraîner.',
     restaurant:'Restaurant Le Mboa : approche le comptoir pour commander.',
     armory:'Armurerie Tactique : approche le comptoir pour t’équiper.'
   };
   showToast(labels[type]);
 }
 
+function trainOnPunchingBag(){
+  P.bagSwing=1.2;
+  SAVE.maxStamina=Math.min(160,(SAVE.maxStamina||100)+5);
+  P.stamina=SAVE.maxStamina;
+  playPunchSound(true);
+  showToast(`Entraînement boxe · Endurance max : ${SAVE.maxStamina}`);
+  writeSave();
+}
+
 function doSmartAction(){
   if(S==='shop'){closeShop();return;}
   if(S!=='play'||P.enteringCar)return;
 
-  // Interactions à l'intérieur d'un bâtiment
   if(interiorType){
     const cfg=INTERIORS[interiorType];
-    // Sortie par la porte
     if(Math.hypot(P.x-cfg.ix,P.z-(cfg.iz+cfg.d/2-1.2))<3.2){
       interiorType=null;P.x=ret.x;P.z=ret.z;streamChunks(1,P.x,P.z);return;
     }
-    // Salle de sport : sac de frappe
     if(interiorType==='gym'&&Math.hypot(P.x-(IX_GYM-2.5),P.z-(IZ_GYM-1.5))<2.8){
-      P.punchTimer=0.65;
-      P.bagSwing=1.2;
-      SAVE.maxStamina=Math.min(160,(SAVE.maxStamina||100)+5);
-      P.stamina=SAVE.maxStamina;
-      playTone(110,0.14,'sawtooth',0.08,45);
-      showToast(`Entraînement boxe · Endurance max : ${SAVE.maxStamina}`);
-      writeSave();return;
+      P.punchTimer=0.36;P.comboStep=(P.comboStep+1)%3;
+      trainOnPunchingBag();return;
     }
-    // Restaurant : commander un repas
     if(interiorType==='restaurant'&&Math.hypot(P.x-IX_RESTO,P.z-(IZ_RESTO-3.2))<3.2){
       if(P.cash>=150){
         P.cash-=150;P.hp=100;P.stamina=SAVE.maxStamina||100;
@@ -982,11 +1017,9 @@ function doSmartAction(){
       }else showToast('Il te faut 150 FCFA pour commander un plat.');
       return;
     }
-    // Armurerie : ouvrir le catalogue
     if(interiorType==='armory'&&Math.hypot(P.x-IX_ARMORY,P.z-(IZ_ARMORY-2.2))<3.2){
       openShop();return;
     }
-    // Parler aux PNJ présents dans la pièce
     for(const npc of interiorNPCs){
       if(npc.type===interiorType&&Math.hypot(P.x-npc.x,P.z-npc.z)<4.0){
         npc.h=Math.atan2(P.x-npc.x,P.z-npc.z);
@@ -997,26 +1030,22 @@ function doSmartAction(){
     return;
   }
 
-  // Sortir d'un véhicule
   if(P.car){
     const c=P.car,s=Math.sin(c.h),k=Math.cos(c.h);
     P.x=c.x-k*2.8;P.z=c.z+s*2.8;hitBuilding(P,0.6);
     P.car=null;c.v=0;c.kind='me';c.hasDriver=false;P.m.visible=true;updateWeaponHUD();updateControlUI();return;
   }
 
-  // Entrer dans un véhicule proche
   const bestCar=findNearestCar(5.8);
   if(bestCar){
     startEnterCarAnimation(bestCar);return;
   }
 
-  // Entrer dans un bâtiment (Villa, Gym, Restaurant, Armurerie)
   const d=nearDoor();
   if(d){
     enterInterior(d.type||'villa',d);return;
   }
 
-  // Parler à un habitant dehors
   const npc=findNearestNPC(6.0);
   if(npc){
     npc.h=Math.atan2(P.x-npc.x,P.z-npc.z);npc.t=4;
@@ -1026,9 +1055,99 @@ function doSmartAction(){
   }
 }
 
-// ===== VISÉE RAYCAST 3D & BALISTIQUE MULTI-ARMES
+// ===== COMBAT MAINS NUES (COUPS DE POING) & BALISTIQUE MULTI-ARMES
 const raycaster=new THREE.Raycaster();
 const crosshairNDC=new THREE.Vector2(0,0.08);
+
+function performMeleeAttack(){
+  const w=WEAPONS.fist;
+  if(P.cd>0||P.car)return;
+  P.cd=w.cd;
+  P.punchTimer=0.36;
+  const isFinisher=(P.comboStep===2);
+  const dmg=isFinisher?36:w.dmg;
+  P.comboStep=(P.comboStep+1)%3;
+
+  // Légère avancée dynamique lors du coup de poing
+  const fx=Math.sin(P.h),fz=Math.cos(P.h);
+  P.x+=fx*0.32;P.z+=fz*0.32;
+  if(interiorType){
+    const cfg=INTERIORS[interiorType];
+    P.x=cl(P.x,cfg.ix-cfg.w/2+0.8,cfg.ix+cfg.w/2-0.8);
+    P.z=cl(P.z,cfg.iz-cfg.d/2+0.8,cfg.iz+cfg.d/2-0.8);
+    // Frappe directe sur le sac de frappe de la salle de sport
+    if(interiorType==='gym'&&Math.hypot(P.x-(IX_GYM-2.5),P.z-(IZ_GYM-1.5))<2.5){
+      trainOnPunchingBag();return;
+    }
+  }else{
+    hitBuilding(P,0.62);
+    resolvePersonCarCollisions(P,0.68);
+  }
+
+  let landed=false;
+  const gy=getGroundY(P.x,P.z,interiorType);
+
+  // 1. Cibles humaines à portée de poing
+  if(!interiorType){
+    const targets=enemies.filter(e=>!e.dead).concat(copsOnFoot).concat(peds.filter(p=>!p.dead));
+    for(const t of targets){
+      const dx=t.x-P.x,dz=t.z-P.z,dist=Math.hypot(dx,dz);
+      if(dist<=w.range){
+        const dot=(dx/(dist||1))*fx+(dz/(dist||1))*fz;
+        if(dot>0.3){
+          landed=true;
+          t.hp-=dmg;
+          t.x+=fx*(isFinisher?0.95:0.55);
+          t.z+=fz*(isFinisher?0.95:0.55);
+          hitBuilding(t,0.62);
+          const sp=bx(0.22,0.22,0.22,0xfef08a,t.x,gy+1.35,t.z);trs.push({m:sp,t:0.1});
+          if(t.profile){
+            t.fl=6;
+            if(t.hp<=0)killPed(t);
+            else addCrime(1);
+          }else if(copsOnFoot.includes(t)){
+            addCrime(2);
+            if(t.hp<=0){scene.remove(t.m);copsOnFoot=copsOnFoot.filter(x=>x!==t);P.cash+=50;}
+          }else if(t.hp<=0&&!t.dead){
+            t.dead=1;scene.remove(t.m);enemiesLeft--;
+            showToast(`Cible K.O. · Restants : ${Math.max(0,enemiesLeft)}`);
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // 2. Coups de poing sur les véhicules ou vitrines proches
+  if(!landed&&!interiorType){
+    for(const c of cars){
+      const dx=c.x-P.x,dz=c.z-P.z,dist=Math.hypot(dx,dz);
+      if(dist<3.1){
+        const dot=(dx/(dist||1))*fx+(dz/(dist||1))*fz;
+        if(dot>0.35){
+          landed=true;
+          c.hp-=8;
+          if(isFinisher)shatterCarWindows(c);
+          addCrime(c.kind==='cop'?2:1);
+          if(c.hp<=0)explodeCar(c);
+          break;
+        }
+      }
+    }
+  }
+
+  if(!landed&&!interiorType){
+    for(const bw of buildingWindows){
+      if(!bw.broken&&Math.hypot(bw.x-P.x,bw.z-P.z)<2.3){
+        bw.broken=true;bw.mesh.visible=false;
+        spawnGlassShards(bw.x,2.2,bw.z,12);
+        landed=true;break;
+      }
+    }
+  }
+
+  playPunchSound(landed);
+}
 
 function getCrosshairAimData(){
   raycaster.setFromCamera(crosshairNDC,cam);
@@ -1087,6 +1206,10 @@ function spawnBullet(ox,oy,oz,dirVec,speed,dmg,fromPlayer,col=0xfef08a){
 
 function fireWeapon(aimData){
   const id=SAVE.curWeapon,w=WEAPONS[id];
+  if(w.melee){
+    performMeleeAttack();
+    return;
+  }
   if(P.cd>0||P.reloadTimer>0)return;
   if((SAVE.mag[id]||0)<=0){
     reloadWeapon();return;
@@ -1134,7 +1257,6 @@ function updateBullets(dt){
     const stepDist=Math.hypot(stepX,stepY,stepZ);
     const fx=stepX/(stepDist||1),fz=stepZ/(stepDist||1);
 
-    // Impact sur vitre de bâtiment
     if(!interiorType){
       for(const bw of buildingWindows){
         if(!bw.broken&&Math.hypot(bw.x-b.x,bw.z-b.z)<1.8&&b.y<3.4){
@@ -1309,6 +1431,8 @@ function updateAICar(c,dt){
 function update(dt){
   tm+=dt;updateRadio(dt);
   const i=getInput(),pl=S==='play';
+  const curWep=WEAPONS[SAVE.curWeapon];
+  const isUnarmed=!!curWep.melee;
   const isAiming=pl&&!P.car&&!P.enteringCar&&!!i.aim;
   const maxStam=SAVE.maxStamina||100;
 
@@ -1339,14 +1463,12 @@ function update(dt){
     cars=cars.filter(c=>!c.dead);peds=peds.filter(p=>!p.rm);
   }
 
-  // Cinématique de briefing vivante (gesticulation expressive des deux personnages)
   if(S==='cutscene'&&contactNPC){
     cutsceneTime+=dt;
     swingLimbs(P.m,cutsceneTime*2.6,0,false,'talk');
     swingLimbs(contactNPC.m,cutsceneTime*3.8,0,false,'talk');
   }
 
-  // Animation des PNJ intérieurs & balancement du sac de frappe
   for(const npc of interiorNPCs){
     npc.m.position.set(npc.x,0.15,npc.z);
     npc.m.rotation.y=npc.h;
@@ -1367,10 +1489,14 @@ function update(dt){
     if(P.y>0||P.vy>0){P.y+=P.vy*dt;P.vy-=18*dt;if(P.y<=0){P.y=0;P.vy=0;}}
 
     const aimData=getCrosshairAimData();
-    P.m.userData.laser.visible=isAiming&&P.reloadTimer<=0;
+    P.m.userData.laser.visible=!isUnarmed&&isAiming&&P.reloadTimer<=0;
+
+    // Réticule masqué lorsque mains nues (sauf en garde de boxe), actif avec arme à feu
     const chEl=$('crosshair');
-    chEl.classList.toggle('aiming',isAiming);
-    chEl.classList.toggle('locked',!!aimData.targetObj);
+    chEl.style.display=(isUnarmed&&!isAiming)?'none':'block';
+    chEl.classList.toggle('aiming',!isUnarmed&&isAiming);
+    chEl.classList.toggle('guard',isUnarmed&&isAiming);
+    chEl.classList.toggle('locked',!isUnarmed&&!!aimData.targetObj);
 
     if(P.enteringCar){
       updateEnterCarAnimation(dt);
@@ -1404,7 +1530,7 @@ function update(dt){
         const wz=fwdZ*(-i.y)+rgtZ*i.x;
         const th=Math.atan2(wx,wz);
         const sp=(isAiming?3.4:sprinting?10.4:5.3)*Math.min(1,m);
-        if(!isAiming&&!i.fire)P.h-=angd(P.h,th)*Math.min(1,dt*14);
+        if(!isAiming&&(!i.fire||isUnarmed))P.h-=angd(P.h,th)*Math.min(1,dt*14);
         P.x+=Math.sin(th)*sp*dt;P.z+=Math.cos(th)*sp*dt;
         P.wk+=dt*sp*1.9;
       }
@@ -1608,12 +1734,13 @@ function update(dt){
   const playerGy=getGroundY(P.x,P.z,interiorType);
   P.m.position.set(P.x,playerGy+P.y,P.z);
   P.m.rotation.y=P.h;
-  P.m.userData.gun.visible=!P.car&&P.punchTimer<=0;
+  P.m.userData.gun.visible=!P.car&&!isUnarmed&&P.punchTimer<=0;
 
   if(S!=='cutscene'){
     const isMoving=!P.car&&(Math.hypot(i.x,i.y)>0.05||!!P.enteringCar);
-    const animMode=P.punchTimer>0?'punch':P.reloadTimer>0?'reload':'walk';
-    swingLimbs(P.m,P.wk,isMoving?0.48:0.04,i.run&&!isAiming,animMode,tm);
+    const animMode=P.punchTimer>0?'punch':(isUnarmed&&isAiming)?'guard':P.reloadTimer>0?'reload':'walk';
+    const actT=P.punchTimer>0?P.punchTimer:tm;
+    swingLimbs(P.m,P.wk,isMoving?0.48:0.04,i.run&&!isAiming,animMode,actT,P.comboStep);
   }
   for(const t of trs){
     t.t-=dt;
@@ -1623,7 +1750,7 @@ function update(dt){
   }
   trs=trs.filter(t=>!t.d);
 
-  // ===== CAMÉRA (CINÉMATIQUE CHAMP/CONTRE-CHAMP, ZOOM SNIPER/ÉPAULE, OU CONDUITE)
+  // ===== CAMÉRA
   if(S==='cutscene'&&contactNPC){
     const shot=Math.floor(cutsceneTime/3.2)%2;
     const focus=shot===0?contactNPC:P;
@@ -1689,7 +1816,6 @@ function update(dt){
   if(msgT>0){msgT-=dt;if(msgT<=0)$('toast').classList.remove('show');}
   if(bubbleT>0){bubbleT-=dt;if(bubbleT<=0)$('npc-bubble').style.display='none';}
 
-  // Libellé contextuel sobre sur le bouton d'action
   const actLbl=$('act-label');
   if(actLbl){
     let lbl='ACTION';
@@ -1801,7 +1927,7 @@ function startGame(){
   clearCopsOnFoot();clearContactNPC();
   cars=[];peds=[];bullets=[];stars=0;interiorType=null;
   P.x=SAVE.px;P.z=SAVE.pz;P.h=0;P.y=0;P.vy=0;P.hp=SAVE.hp;P.armor=SAVE.armor;P.stamina=SAVE.maxStamina||100;P.cash=SAVE.cash;
-  P.car=null;P.enteringCar=null;P.reloadTimer=0;P.punchTimer=0;P.inv=1;
+  P.car=null;P.enteringCar=null;P.reloadTimer=0;P.punchTimer=0;P.comboStep=0;P.inv=1;
   P.m.visible=true;cy=0;
   updateWeaponHUD();updateControlUI();
   streamChunks(true,P.x,P.z);
