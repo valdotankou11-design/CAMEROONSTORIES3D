@@ -4,31 +4,37 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>CAMEROUN STORIES 3D · Édition Payback Style</title>
+<title>CAMEROUN STORIES 3D · Payback Edition</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- HUD SUPÉRIEUR GAUCHE -->
+<!-- RÉTICULE DE VISÉE DYNAMIQUE AU CENTRE DE L'ÉCRAN -->
+<div id="crosshair">
+  <div class="ch-ring"></div>
+  <div class="ch-dot"></div>
+</div>
+
+<!-- RADAR SYNCHRONISÉ CLIQUABLE POUR OUVRIR LA GRANDE CARTE -->
+<div class="hud" id="radar-wrap" onclick="openBigMap()" title="Appuyer pour ouvrir la grande carte">
+  <canvas id="radar" width="124" height="124"></canvas>
+  <div id="map-pill">🗺️ CARTE</div>
+</div>
+
+<!-- STATUT COMPACT SOUS LE RADAR -->
 <div class="hud" id="hud-tl">
   <div class="stat-row"><span class="stat-ico">❤️</span><div class="bar-bg"><div id="hp-bar"></div></div></div>
   <div class="stat-row"><span class="stat-ico">🛡️</span><div class="bar-bg"><div id="ar-bar"></div></div></div>
   <div class="stat-row"><span class="stat-ico">⚡</span><div class="bar-bg"><div id="st-bar"></div></div></div>
-  <div class="tl-footer">
-    <div id="stars">☆☆☆☆☆</div>
-    <div id="clock-tag">14:00</div>
-  </div>
   <div id="zone-tag">📍 YAOUNDÉ · BOULEVARD DU 20 MAI</div>
 </div>
 
-<!-- RADAR SOUS LE HUD GAUCHE -->
-<div class="hud" id="radar-wrap">
-  <canvas id="radar" width="112" height="112"></canvas>
-  <div id="radio-badge">📻 CRTV FM · Makossa</div>
-</div>
-
-<!-- HUD SUPÉRIEUR DROIT (CLIQUER SUR L'ARME CHANGE D'ARME) -->
+<!-- HUD SUPÉRIEUR DROIT STYLE PAYBACK 2 -->
 <div class="hud" id="hud-tr">
+  <div class="tr-top">
+    <span id="stars">☆☆☆☆☆</span>
+    <span id="clock-tag">14:00</span>
+  </div>
   <div id="cash">500 FCFA</div>
   <div id="weapon-info" onclick="switchWeapon()" title="Appuyer pour changer d'arme">🔫 Pistolet 9mm ↻</div>
   <div id="mission-timer"></div>
@@ -40,11 +46,11 @@
   <div class="car-hp-bg"><div id="car-hp-bar"></div></div>
 </div>
 
-<!-- BANDEAU OBJECTIF & NOTIFICATIONS -->
+<!-- BANDEAU OBJECTIF & DISTANCE GPS -->
 <div class="hud" id="obj-banner">🎯 Objectif : Rejoins le point de mission</div>
 <div class="hud" id="toast"></div>
 
-<!-- BULLE DIALOGUE PNJ -->
+<!-- BULLE DIALOGUE AGENT IA PNJ -->
 <div class="hud" id="npc-bubble">
   <div id="npc-name">Moussa · Taximan</div>
   <div id="npc-text">Bienvenue à Yaoundé !</div>
@@ -52,25 +58,52 @@
 
 <!-- BOUTONS RAPIDES HAUT DROITE -->
 <button class="top-btn" id="btn-pause" title="Pause">❚❚</button>
-<button class="top-btn" id="btn-radio" title="Changer de radio FM">📻</button>
+<button class="top-btn" id="btn-radio" title="Radio FM">📻</button>
 
 <!-- ZONES TACTILES (JOYSTICK À GAUCHE, CAMÉRA À DROITE) -->
 <div id="lz"></div>
 <div id="jz"></div>
 <div id="jb"><div id="jk"></div></div>
 
-<!-- CONTRÔLES TACTILES ÉPURÉS STYLE PAYBACK 2 : MODE À PIED (3 BOUTONS) -->
+<!-- CONTRÔLES TACTILES ÉPURÉS STYLE PAYBACK 2 : MODE À PIED -->
 <div id="controls-foot" class="t-group">
   <button class="tbtn t-fire" data-k="fire" title="Tirer">🔫</button>
+  <button class="tbtn t-aim" data-k="aim" title="Viser avec précision">🎯</button>
   <button class="tbtn t-run" data-k="run" title="Maintenir: Courir · Tap: Sauter">🏃</button>
   <button class="tbtn t-act" data-k="act" title="Action">🚗</button>
 </div>
 
-<!-- CONTRÔLES TACTILES ÉPURÉS STYLE PAYBACK 2 : MODE EN VOITURE (3 BOUTONS) -->
+<!-- CONTRÔLES TACTILES ÉPURÉS STYLE PAYBACK 2 : MODE EN VOITURE -->
 <div id="controls-car" class="t-group" style="display:none">
   <button class="tbtn t-gas" data-k="gas" title="Accélérer">▲</button>
   <button class="tbtn t-brake" data-k="brake" title="Freiner / Marche arrière">▼</button>
+  <button class="tbtn t-carfire" data-k="fire" title="Tirer depuis le véhicule">🔫</button>
   <button class="tbtn t-exit" data-k="act" title="Sortir du véhicule">🚪</button>
+</div>
+
+<!-- GRANDE CARTE INTERACTIVE DE LA VILLE -->
+<div class="overlay" id="big-map-modal">
+  <div class="map-box">
+    <div class="map-header">
+      <div>
+        <h3>🗺️ CARTE DE YAOUNDÉ & GPS</h3>
+        <small>Touche n'importe où sur la carte pour placer un repère GPS</small>
+      </div>
+      <div class="map-actions">
+        <button class="bt sec" onclick="clearCustomWaypoint()">Effacer GPS</button>
+        <button class="bt" onclick="closeBigMap()">FERMER</button>
+      </div>
+    </div>
+    <canvas id="big-map" width="520" height="520"></canvas>
+    <div class="map-legend">
+      <span><i style="background:#ff4081"></i> Toi</span>
+      <span><i style="background:#ffd54f"></i> Mission</span>
+      <span><i style="background:#00e676"></i> Repère GPS</span>
+      <span><i style="background:#38bdf8"></i> Boutique</span>
+      <span><i style="background:#fb923c"></i> Station-Service</span>
+      <span><i style="background:#2979ff"></i> Police</span>
+    </div>
+  </div>
 </div>
 
 <!-- OVERLAYS -->
@@ -134,8 +167,8 @@
     <button class="bt danger" id="btn-reset">RÉINITIALISER</button>
   </div>
   <div id="how">
-    <b>À pied :</b> Joystick gauche = marcher · <b>🏃</b> (maintenir = courir, tap rapide = sauter) · <b>🔫</b> = tirer · <b>🚗/💬/🏠</b> = monter en voiture, parler ou entrer · Touche l'arme en haut à droite pour en changer.<br>
-    <b>En voiture (Style Payback 2) :</b> Joystick gauche = tourner (Gauche / Droite) · <b>▲</b> = Accélérer · <b>▼</b> = Freiner puis Marche arrière automatique · <b>🚪</b> = Sortir.
+    <b>À pied :</b> Joystick gauche = marcher · <b>🎯</b> = viser (laser + zoom épaule) · <b>🔫</b> = tirer de vraies balles · <b>🏃</b> (maintenir = courir, tap = sauter) · <b>🚗/💬/🏠</b> = monter en voiture, parler aux PNJ IA ou entrer · Touche le radar pour ouvrir la <b>Grande Carte</b>.<br>
+    <b>En voiture (Style Payback 2) :</b> Joystick gauche = tourner · <b>▲</b> = Accélérer · <b>▼</b> = Freiner puis Marche arrière · <b>🔫</b> = Tirer en roulant · <b>🚪</b> = Sortir.
   </div>
 </div>
 
