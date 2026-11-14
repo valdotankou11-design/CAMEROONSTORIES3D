@@ -6,6 +6,7 @@ const CS=80,NB=10,WS=CS*NB,IX=5000,IZ=5000;
 const MON_X=4*CS+40,MON_Z=4*CS+40;
 const SHOP_X=3*CS+24,SHOP_Z=3*CS+33;
 const GAS_X=2*CS+25,GAS_Z=4*CS+25;
+const LAKE_X=6*CS+40,LAKE_Z=5*CS+40;
 
 const touch=matchMedia('(pointer:coarse)').matches;
 if(touch)document.body.classList.add('t');
@@ -16,7 +17,7 @@ document.body.prepend(ren.domElement);
 
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8ecae6);
-scene.fog=new THREE.FogExp2(0x8ecae6,0.0046);
+scene.fog=new THREE.FogExp2(0x8ecae6,0.0044);
 const cam=new THREE.PerspectiveCamera(62,1,0.3,240);
 
 const hemi=new THREE.HemisphereLight(0xfff8e7,0x64748b,0.92);
@@ -28,7 +29,17 @@ scene.add(sun);
 function onResize(){ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();}
 onResize();addEventListener('resize',onResize);
 
-// ===== MATÉRIAUX & TEXTURES RÉALISTES (AVEC ÉCLAIRAGE NOCTURNE DES IMMEUBLES)
+// ===== HAUTEUR EXACTE DU SOL (TROTTOIR = +0.26m, ROUTE = 0m, PLACE = +0.40m, INTÉRIEUR = +0.15m)
+function getGroundY(x,z,isInside=false){
+  if(isInside)return 0.15;
+  const cx=Math.floor(x/CS),cz=Math.floor(z/CS);
+  const lx=((x%CS)+CS)%CS,lz=((z%CS)+CS)%CS;
+  if(cx===4&&cz===4&&lx>=16&&lx<=64&&lz>=16&&lz<=64)return 0.40;
+  if(lx>=9&&lx<=71&&lz>=9&&lz<=71)return 0.26;
+  return 0.0;
+}
+
+// ===== MATÉRIAUX & TEXTURES
 const MC={},GC={},mt=(c,r=0.82,m=0.08)=>MC[c+'_'+r+'_'+m]||(MC[c+'_'+r+'_'+m]=new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m}));
 function bx(w,h,d,c,x,y,z,p){
   const k=w+'_'+h+'_'+d,m=new THREE.Mesh(GC[k]||(GC[k]=new THREE.BoxGeometry(w,h,d)),typeof c==='object'?c:mt(c));
@@ -43,7 +54,6 @@ function makeTex(fn,w,h){
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;
 }
 
-// Façade d'immeuble jour + carte émissive nocturne pour que la ville brille la nuit
 const facadeTex=makeTex(x=>{
   x.fillStyle='#e5e7eb';x.fillRect(0,0,128,128);
   x.fillStyle='#cbd5e1';x.fillRect(0,58,128,6);x.fillRect(0,122,128,6);
@@ -74,7 +84,6 @@ const windowGlowTex=makeTex(x=>{
   }
 },128,128);
 
-// Texture de route bitumée avec marquage jaune, bandes blanches et passages piétons
 const roadTex=makeTex(x=>{
   x.fillStyle='#2a2e35';x.fillRect(0,0,256,256);
   for(let i=0;i<1100;i++){
@@ -98,48 +107,38 @@ roadTex.wrapS=roadTex.wrapT=THREE.ClampToEdgeWrapping;
 const roadMat=new THREE.MeshStandardMaterial({map:roadTex,roughness:0.88});
 const PG=new THREE.PlaneGeometry(CS,CS);
 
-// ===== PERSONNAGES ANATOMIQUES ARTICULÉS
+// ===== PERSONNAGES ARTICULÉS (SEMELLES À Y = 0.00 EXACT)
 function buildHuman(shirtCol,skinCol,role){
   const g=new THREE.Group(),u={};
   const pants=role==='cop'?0x1e293b:role==='bir'?0x2d4a22:0x334155;
 
-  bx(0.52,0.22,0.3,pants,0,0.88,0,g);
-  bx(0.54,0.06,0.32,0x111111,0,0.97,0,g);
-
-  const legL=new THREE.Group();legL.position.set(-0.15,0.86,0);
-  cyl(0.115,0.09,0.76,10,pants,0,-0.38,0,legL);
-  bx(0.16,0.12,0.29,0x111111,0,-0.8,0.05,legL);
-  g.add(legL);u.legL=legL;
-
-  const legR=new THREE.Group();legR.position.set(0.15,0.86,0);
-  cyl(0.115,0.09,0.76,10,pants,0,-0.38,0,legR);
-  bx(0.16,0.12,0.29,0x111111,0,-0.8,0.05,legR);
-  g.add(legR);u.legR=legR;
-
-  cyl(0.28,0.23,0.68,12,shirtCol,0,1.32,0,g);
-  if(role==='cop'||role==='bir')bx(0.54,0.48,0.36,role==='bir'?0x1a2e16:0x0f172a,0,1.35,0,g);
-  cyl(0.09,0.1,0.14,10,skinCol,0,1.72,0,g);
+  const torso=new THREE.Group();
+  bx(0.52,0.22,0.3,pants,0,0.88,0,torso);
+  bx(0.54,0.06,0.32,0x111111,0,0.97,0,torso);
+  cyl(0.28,0.23,0.68,12,shirtCol,0,1.32,0,torso);
+  if(role==='cop'||role==='bir')bx(0.54,0.48,0.36,role==='bir'?0x1a2e16:0x0f172a,0,1.35,0,torso);
+  cyl(0.09,0.1,0.14,10,skinCol,0,1.72,0,torso);
 
   const head=new THREE.Mesh(new THREE.SphereGeometry(0.21,14,12),mt(skinCol,0.65));
-  head.position.set(0,1.94,0);g.add(head);
-  bx(0.045,0.035,0.03,0x111111,-0.07,1.96,0.195,g);
-  bx(0.045,0.035,0.03,0x111111,0.07,1.96,0.195,g);
+  head.position.set(0,1.94,0);torso.add(head);
+  bx(0.045,0.035,0.03,0x111111,-0.07,1.96,0.195,torso);
+  bx(0.045,0.035,0.03,0x111111,0.07,1.96,0.195,torso);
 
   if(role==='bir'||role==='cop'){
-    cyl(0.22,0.22,0.11,12,role==='bir'?0xb91c1c:0x0f172a,0,2.08,0,g);
-    bx(0.24,0.04,0.18,0x0f172a,0,2.04,0.16,g);
+    cyl(0.22,0.22,0.11,12,role==='bir'?0xb91c1c:0x0f172a,0,2.08,0,torso);
+    bx(0.24,0.04,0.18,0x0f172a,0,2.04,0.16,torso);
   }else if(role==='mama'){
     const scarf=new THREE.Mesh(new THREE.SphereGeometry(0.225,12,10),mt(0xe91e63,0.7));
-    scarf.position.set(0,1.99,-0.02);g.add(scarf);
+    scarf.position.set(0,1.99,-0.02);torso.add(scarf);
   }else{
     const hair=new THREE.Mesh(new THREE.SphereGeometry(0.215,12,10,0,PI*2,0,PI*0.58),mt(0x14110f,0.85));
-    hair.position.set(0,1.96,-0.01);g.add(hair);
+    hair.position.set(0,1.96,-0.01);torso.add(hair);
   }
 
   const armL=new THREE.Group();armL.position.set(-0.34,1.58,0);
   cyl(0.082,0.07,0.32,8,shirtCol,0,-0.16,0,armL);
   cyl(0.068,0.058,0.34,8,skinCol,0,-0.46,0,armL);
-  g.add(armL);u.armL=armL;
+  torso.add(armL);u.armL=armL;
 
   const armR=new THREE.Group();armR.position.set(0.34,1.58,0);
   cyl(0.082,0.07,0.32,8,shirtCol,0,-0.16,0,armR);
@@ -147,110 +146,200 @@ function buildHuman(shirtCol,skinCol,role){
   const gun=new THREE.Group();gun.position.set(0,-0.62,0.14);
   bx(0.07,0.11,0.44,0x18181b,0,0.04,0.14,gun);
   bx(0.065,0.14,0.08,0x27272a,0,-0.05,-0.02,gun);
-  // Laser rouge de visée attaché au canon
-  const laser=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,26,6),new THREE.MeshBasicMaterial({color:0xff1744,transparent:true,opacity:0.75}));
+  const laser=new THREE.Mesh(new THREE.CylinderGeometry(0.011,0.011,26,6),new THREE.MeshBasicMaterial({color:0xff1744,transparent:true,opacity:0.75}));
   laser.rotation.x=PI/2;laser.position.set(0,0.04,13.2);laser.visible=false;
   gun.add(laser);u.laser=laser;
   gun.visible=false;
   armR.add(gun);u.armR=armR;u.gun=gun;
-  g.add(armR);
+  torso.add(armR);
+  g.add(torso);u.torso=torso;
+
+  // Jambes avec articulation genou pour une démarche fluide et naturelle
+  const legL=new THREE.Group();legL.position.set(-0.15,0.86,0);
+  cyl(0.115,0.095,0.42,10,pants,0,-0.21,0,legL);
+  const kneeL=new THREE.Group();kneeL.position.set(0,-0.42,0);
+  cyl(0.092,0.08,0.36,10,pants,0,-0.18,0,kneeL);
+  bx(0.16,0.10,0.29,0x111111,0,-0.39,0.05,kneeL);
+  legL.add(kneeL);g.add(legL);u.legL=legL;u.kneeL=kneeL;
+
+  const legR=new THREE.Group();legR.position.set(0.15,0.86,0);
+  cyl(0.115,0.095,0.42,10,pants,0,-0.21,0,legR);
+  const kneeR=new THREE.Group();kneeR.position.set(0,-0.42,0);
+  cyl(0.092,0.08,0.36,10,pants,0,-0.18,0,kneeR);
+  bx(0.16,0.10,0.29,0x111111,0,-0.39,0.05,kneeR);
+  legR.add(kneeR);g.add(legR);u.legR=legR;u.kneeR=kneeR;
 
   g.userData=u;scene.add(g);return g;
 }
 
-function swingLimbs(g,t,amp){
+function swingLimbs(g,t,amp,isRunning=false){
   const u=g.userData,s=Math.sin(t)*amp;
   u.legL.rotation.x=s;
   u.legR.rotation.x=-s;
-  u.armL.rotation.x=-s*0.85;
-  u.armR.rotation.x=u.gun.visible?-1.35:s*0.85;
+  if(u.kneeL&&u.kneeR){
+    u.kneeL.rotation.x=Math.max(0,-Math.sin(t)*amp*0.95);
+    u.kneeR.rotation.x=Math.max(0,Math.sin(t)*amp*0.95);
+  }
+  if(u.torso){
+    u.torso.position.y=Math.abs(Math.sin(t))*amp*0.08;
+    u.torso.rotation.x=isRunning?0.14:amp*0.05;
+  }
+  u.armL.rotation.x=-s*0.9;
+  u.armR.rotation.x=u.gun.visible?-1.38:s*0.9;
 }
 
-// ===== VÉHICULES 3D HAUTE FINITION (CARROSSERIE SCULPTÉE, VITRES INCLINÉES, PHARES, FEUX STOP)
+// ===== GÉOMÉTRIE PROFILÉE DES VOITURES & MOTOS RÉALISTES
+const carBodyGeo=(()=>{
+  const sh=new THREE.Shape();
+  // Profil latéral aérodynamique (z = longueur, y = hauteur)
+  sh.moveTo(-2.42,0.42);
+  sh.lineTo(2.44,0.42);
+  sh.lineTo(2.46,0.86);
+  sh.lineTo(2.28,1.02);
+  sh.lineTo(1.22,1.12);   // Capot incliné
+  sh.lineTo(0.58,1.76);   // Pare-brise incliné
+  sh.lineTo(-0.88,1.78);  // Toit profilé
+  sh.lineTo(-1.72,1.18);  // Lunette arrière fastback
+  sh.lineTo(-2.36,1.10);  // Coffre arrière
+  sh.lineTo(-2.45,0.84);
+  sh.closePath();
+  const geo=new THREE.ExtrudeGeometry(sh,{depth:1.96,bevelEnabled:true,bevelThickness:0.12,bevelSize:0.08,bevelSegments:2});
+  geo.center();
+  geo.rotateY(PI/2);
+  return geo;
+})();
+
+const cabinGlassGeo=(()=>{
+  const sh=new THREE.Shape();
+  sh.moveTo(-1.55,1.16);
+  sh.lineTo(1.12,1.12);
+  sh.lineTo(0.54,1.72);
+  sh.lineTo(-0.84,1.74);
+  sh.closePath();
+  const geo=new THREE.ExtrudeGeometry(sh,{depth:1.78,bevelEnabled:true,bevelThickness:0.06,bevelSize:0.04,bevelSegments:1});
+  geo.center();
+  geo.rotateY(PI/2);
+  return geo;
+})();
+
 const beamMat=new THREE.MeshBasicMaterial({color:0xfef9c3,transparent:true,opacity:0.16,depthWrite:false,side:THREE.DoubleSide});
 const lampGlowMat=new THREE.MeshBasicMaterial({color:0xfef08a,transparent:true,opacity:0.16,depthWrite:false,side:THREE.DoubleSide});
 
 function buildVehicle(col,type){
   const g=new THREE.Group();
-  const bodyMat=new THREE.MeshStandardMaterial({color:col,roughness:0.24,metalness:0.5});
-  const glassMat=new THREE.MeshStandardMaterial({color:0x0b132b,roughness:0.08,metalness:0.88});
+  const bodyMat=new THREE.MeshStandardMaterial({color:col,roughness:0.22,metalness:0.55});
+  const glassMat=new THREE.MeshStandardMaterial({color:0x0b132b,roughness:0.08,metalness:0.9});
   const chromeMat=new THREE.MeshStandardMaterial({color:0xe2e8f0,roughness:0.2,metalness:0.85});
 
   if(type==='moto'){
-    bx(0.42,0.46,1.85,bodyMat,0,0.72,0,g);
-    bx(0.38,0.22,0.65,0x111111,0,0.96,-0.25,g);
-    const w1=cyl(0.38,0.38,0.18,16,0x111111,0,0.38,0.74,g);w1.rotation.z=PI/2;
-    const w2=cyl(0.38,0.38,0.18,16,0x111111,0,0.38,-0.74,g);w2.rotation.z=PI/2;
-    bx(0.92,0.07,0.1,chromeMat,0,1.16,0.58,g);
-    bx(0.22,0.22,0.08,new THREE.MeshBasicMaterial({color:0xfef9c3}),0,1.02,0.94,g);
+    // Moto réaliste : cadre triangulaire, fourche avant inclinée, réservoir sculpté, selle, échappement et pilote
+    const w1=cyl(0.4,0.4,0.18,18,0x0f172a,0,0.4,0.86,g);w1.rotation.z=PI/2;
+    const r1=cyl(0.24,0.24,0.2,12,chromeMat,0,0.4,0.86,g);r1.rotation.z=PI/2;
+    const w2=cyl(0.4,0.4,0.22,18,0x0f172a,0,0.4,-0.84,g);w2.rotation.z=PI/2;
+    const r2=cyl(0.24,0.24,0.24,12,chromeMat,0,0.4,-0.84,g);r2.rotation.z=PI/2;
+
+    // Fourche télescopique inclinée (28°)
+    for(const fx of[-0.14,0.14]){
+      const fork=cyl(0.04,0.04,0.92,8,chromeMat,fx,0.82,0.66,g);
+      fork.rotation.x=-0.46;
+    }
+    // Cadre triangulaire & moteur
+    bx(0.32,0.36,0.68,0x1e293b,0,0.64,0.02,g);
+    const frameBar=cyl(0.045,0.045,0.95,8,0x334155,0,0.86,0.22,g);frameBar.rotation.x=0.85;
+    // Réservoir sculpté + carénage avant triangulaire
+    const tank=new THREE.Mesh(new THREE.SphereGeometry(0.28,12,10),bodyMat);
+    tank.scale.set(0.85,0.75,1.45);tank.position.set(0,1.02,0.22);g.add(tank);
+    const cowl=new THREE.Mesh(new THREE.ConeGeometry(0.28,0.62,4),bodyMat);
+    cowl.rotation.x=PI/2;cowl.rotation.y=PI/4;cowl.position.set(0,1.05,0.68);g.add(cowl);
+    // Selle profilée + garde-boue arrière + pot d'échappement chromé
+    bx(0.34,0.16,0.76,0x111827,0,0.92,-0.36,g);
+    const exhaust=cyl(0.055,0.045,0.85,10,chromeMat,0.24,0.56,-0.55,g);exhaust.rotation.x=PI/2-0.25;
+    // Guidon + phare avant
+    bx(0.88,0.05,0.06,chromeMat,0,1.22,0.52,g);
+    bx(0.2,0.2,0.08,new THREE.MeshBasicMaterial({color:0xfef9c3}),0,1.06,0.95,g);
     const b1=new THREE.Mesh(new THREE.ConeGeometry(1.8,9,12,1,true),beamMat);
     b1.rotation.x=-PI/2;b1.position.set(0,0.65,5.4);g.add(b1);
     g.userData.beams=[b1];
     scene.add(g);return g;
   }
 
-  // Châssis & bas de caisse profilés
-  bx(2.16,0.42,4.78,0x111827,0,0.44,0,g);
-  bx(2.22,0.56,4.84,bodyMat,0,0.86,0,g);
-  // Capot avant sculpté & coffre arrière
-  bx(2.08,0.16,1.45,bodyMat,0,1.16,1.56,g);
-  bx(2.08,0.14,1.05,bodyMat,0,1.15,-1.76,g);
+  // Carrosserie profilée aérodynamique + habitacle vitré incliné
+  const shell=new THREE.Mesh(carBodyGeo,bodyMat);
+  shell.position.set(0,1.08,0);g.add(shell);
 
-  // Habitacle avec pare-brise incliné, vitres latérales et toit
-  const cabin=bx(1.94,0.64,2.24,glassMat,0,1.48,-0.12,g);
-  cabin.scale.set(0.96,1,1);
-  bx(1.92,0.11,2.08,bodyMat,0,1.84,-0.12,g);
-  // Montants de toit peints
-  for(const sx of[-0.92,0.92])for(const sz of[-0.12])bx(0.08,0.64,0.16,bodyMat,sx,1.48,sz,g);
+  const glass=new THREE.Mesh(cabinGlassGeo,glassMat);
+  glass.position.set(0,1.42,-0.12);g.add(glass);
 
-  // Rétroviseurs, pare-chocs chromés, calandre & plaques
-  bx(0.24,0.13,0.15,bodyMat,-1.22,1.26,0.78,g);
-  bx(0.24,0.13,0.15,bodyMat,1.22,1.26,0.78,g);
-  bx(2.26,0.2,0.22,chromeMat,0,0.56,2.42,g);
-  bx(2.26,0.2,0.22,chromeMat,0,0.56,-2.42,g);
-  bx(1.02,0.24,0.08,0x0f172a,0,0.84,2.43,g);
-  bx(0.58,0.14,0.05,0xf8fafc,0,0.62,2.54,g);
-  bx(0.58,0.14,0.05,0xfacc15,0,0.62,-2.54,g);
+  // Châssis inférieur, calandre, pare-chocs chromés, rétroviseurs & plaques
+  bx(2.04,0.24,4.82,0x0f172a,0,0.44,0,g);
+  bx(2.18,0.18,0.24,chromeMat,0,0.54,2.46,g);
+  bx(2.18,0.18,0.24,chromeMat,0,0.54,-2.46,g);
+  bx(1.06,0.24,0.08,0x0f172a,0,0.78,2.47,g);
+  bx(0.24,0.12,0.16,bodyMat,-1.18,1.24,0.62,g);
+  bx(0.24,0.12,0.16,bodyMat,1.18,1.24,0.62,g);
+  bx(0.58,0.14,0.05,0xf8fafc,0,0.58,2.58,g);
+  bx(0.58,0.14,0.05,0xfacc15,0,0.58,-2.58,g);
 
-  // 4 Roues larges avec jantes alliage
-  for(const[wx,wz]of[[-1.1,1.48],[1.1,1.48],[-1.1,-1.48],[1.1,-1.48]]){
+  // Portière conducteur articulée (pivot sur la charnière avant gauche) pour l'animation d'entrée
+  const doorL=new THREE.Group();
+  doorL.position.set(-1.05,0.86,0.55);
+  bx(0.1,0.62,1.28,bodyMat,0,0,-0.64,doorL);
+  bx(0.12,0.06,0.24,chromeMat,-0.02,0.18,-1.05,doorL);
+  g.add(doorL);g.userData.doorL=doorL;
+
+  // 4 Roues larges avec passages de roues et jantes alliage
+  for(const[wx,wz]of[[-1.06,1.48],[1.06,1.48],[-1.06,-1.48],[1.06,-1.48]]){
     const tire=cyl(0.45,0.45,0.3,18,0x0f172a,wx,0.45,wz,g);tire.rotation.z=PI/2;
     const rim=cyl(0.27,0.27,0.32,12,chromeMat,wx,0.45,wz,g);rim.rotation.z=PI/2;
   }
 
-  // Phares avant lumineux + faisceaux projetés sur la route + feux stop dynamiques
+  // Phares avant lumineux + faisceaux + feux stop dynamiques
   const hlMat=new THREE.MeshBasicMaterial({color:0xfef9c3});
   const brakeMat=new THREE.MeshBasicMaterial({color:0x991b1b});
   g.userData.brakeMat=brakeMat;
   g.userData.beams=[];
   for(const x of[-0.74,0.74]){
-    bx(0.46,0.19,0.08,hlMat,x,0.92,2.43,g);
-    bx(0.48,0.2,0.08,brakeMat,x,0.92,-2.43,g);
+    bx(0.44,0.18,0.08,hlMat,x,0.86,2.47,g);
+    bx(0.46,0.19,0.08,brakeMat,x,0.92,-2.47,g);
     const beam=new THREE.Mesh(new THREE.ConeGeometry(2.2,11,14,1,true),beamMat);
     beam.rotation.x=-PI/2;beam.position.set(x,0.55,7.8);g.add(beam);
     g.userData.beams.push(beam);
   }
 
   if(type==='taxi'){
-    bx(2.25,0.15,4.86,0x111111,0,0.94,0,g);
-    bx(0.92,0.22,0.34,0x111111,0,1.98,-0.1,g);
-    bx(0.84,0.16,0.36,new THREE.MeshBasicMaterial({color:0xfacc15}),0,1.98,-0.1,g);
+    bx(2.14,0.14,4.88,0x111111,0,0.86,0,g);
+    bx(0.88,0.2,0.32,0x111111,0,1.88,-0.15,g);
+    bx(0.8,0.15,0.34,new THREE.MeshBasicMaterial({color:0xfacc15}),0,1.88,-0.15,g);
   }else if(type==='cop'){
-    bx(2.25,0.22,4.86,0x1d4ed8,0,0.9,0,g);
-    g.userData.l1=bx(0.76,0.2,0.36,new THREE.MeshBasicMaterial({color:0xff1744}),-0.42,1.98,-0.1,g);
-    g.userData.l2=bx(0.76,0.2,0.36,new THREE.MeshBasicMaterial({color:0x2979ff}),0.42,1.98,-0.1,g);
+    bx(2.14,0.2,4.88,0x1d4ed8,0,0.84,0,g);
+    g.userData.l1=bx(0.74,0.18,0.34,new THREE.MeshBasicMaterial({color:0xff1744}),-0.4,1.88,-0.15,g);
+    g.userData.l2=bx(0.74,0.18,0.34,new THREE.MeshBasicMaterial({color:0x2979ff}),0.4,1.88,-0.15,g);
   }else if(type==='vip'){
-    // Aileron sport + double échappement
-    bx(2.14,0.08,0.35,0x111111,0,1.38,-2.18,g);
-    bx(0.12,0.22,0.18,0x111111,-0.82,1.26,-2.18,g);
-    bx(0.12,0.22,0.18,0x111111,0.82,1.26,-2.18,g);
+    bx(2.08,0.08,0.34,0x111111,0,1.26,-2.28,g);
+    bx(0.12,0.2,0.18,0x111111,-0.8,1.16,-2.28,g);
+    bx(0.12,0.2,0.18,0x111111,0.8,1.16,-2.28,g);
   }
   scene.add(g);return g;
 }
 
-// ===== GÉNÉRATION DES QUARTIERS AVEC ÉCLAIRAGE NOCTURNE RICHESSE VISUELLE
+// ===== GÉNÉRATION DE LA VILLE AVEC ARBRES SUR LES AVENUES, PARCS & PORTES VISITABLES
 const chunks={},pend=[],PALETTE=[0xf1f5f9,0xfde68a,0xe2e8f0,0xfed7aa,0xdbeafe,0xfecdd3];
-const buildingMats=[];
+const buildingMats=[],enterableDoors=[];
+
+function addTree(G,tx,tz,ds2,isPalm=false){
+  if(isPalm){
+    cyl(0.16,0.26,5.8,8,0x6d4c41,tx,3.1,tz,G);
+    for(let a=0;a<5;a++){
+      const frond=new THREE.Mesh(new THREE.ConeGeometry(1.7,2.4,6),mt(0x15803d,0.8));
+      frond.position.set(tx+Math.cos(a*1.25)*0.6,6.1,tz+Math.sin(a*1.25)*0.6);
+      frond.rotation.z=0.35;frond.rotation.y=a*1.25;G.add(frond);ds2.push(frond.geometry);
+    }
+  }else{
+    cyl(0.24,0.38,4.0,8,0x5d4037,tx,2.2,tz,G);
+    const crown=new THREE.Mesh(new THREE.DodecahedronGeometry(2.4,1),mt(0x1b5e20,0.85));
+    crown.position.set(tx,4.9,tz);G.add(crown);ds2.push(crown.geometry);
+  }
+}
 
 function createChunk(cx,cz){
   const G=new THREE.Group(),bs=[],ds=[],ds2=[],ox=cx*CS,oz=cz*CS;
@@ -258,12 +347,23 @@ function createChunk(cx,cz){
   const gr=new THREE.Mesh(PG,roadMat);gr.rotation.x=-PI/2;gr.position.set(40,0,40);G.add(gr);
   bx(62,0.26,62,0x94a3b8,40,0.13,40,G);
 
-  // Lampadaires urbains avec halo lumineux au sol pour éclairer la ville la nuit
+  // Lampadaires urbains + Palmiers & arbres d'alignement sur les boulevards
   for(const[lx,lz]of[[11,11],[69,11],[11,69],[69,69]]){
-    cyl(0.11,0.16,6.4,8,0x334155,lx,3.2,lz,G);
-    bx(0.85,0.18,0.34,new THREE.MeshBasicMaterial({color:0xfef08a}),lx+(lx<40?0.35:-0.35),6.35,lz,G);
+    cyl(0.11,0.16,6.4,8,0x334155,lx,3.4,lz,G);
+    bx(0.85,0.18,0.34,new THREE.MeshBasicMaterial({color:0xfef08a}),lx+(lx<40?0.35:-0.35),6.55,lz,G);
     const cone=new THREE.Mesh(new THREE.ConeGeometry(4.8,6.2,12,1,true),lampGlowMat);
-    cone.position.set(lx+(lx<40?0.35:-0.35),3.1,lz);G.add(cone);ds2.push(cone.geometry);
+    cone.position.set(lx+(lx<40?0.35:-0.35),3.3,lz);G.add(cone);ds2.push(cone.geometry);
+  }
+  addTree(G,11,40,ds2,true);
+  addTree(G,69,40,ds2,true);
+  addTree(G,40,11,ds2,false);
+
+  // Lac Municipal & Berges verdoyantes (chunk 6,5)
+  if(cx===6&&cz===5){
+    bx(58,0.28,58,0x2e7d32,40,0.14,40,G);
+    bx(46,0.32,46,new THREE.MeshStandardMaterial({color:0x0284c7,roughness:0.15,metalness:0.6}),40,0.16,40,G);
+    for(const[tx,tz]of[[14,14],[66,14],[14,66],[66,66]])addTree(G,tx,tz,ds2,true);
+    scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
   }
 
   // Place du Monument de la Réunification (chunk 4,4)
@@ -272,32 +372,37 @@ function createChunk(cx,cz){
     bx(48,0.4,48,0xe2e8f0,40,0.2,40,G);
     for(let k=0;k<9;k++){
       const r=8.5-k*0.65;
-      const seg=cyl(r*0.85,r,3.2,16,k%2?0xd97706:0xf59e0b,40,1.8+k*3.1,40,G);
+      const seg=cyl(r*0.85,r,3.2,16,k%2?0xd97706:0xf59e0b,40,2.0+k*3.1,40,G);
       seg.rotation.y=k*0.3;
     }
-    cyl(0.4,1.8,5,12,new THREE.MeshBasicMaterial({color:0xfcd116}),40,30.5,40,G);
+    cyl(0.4,1.8,5,12,new THREE.MeshBasicMaterial({color:0xfcd116}),40,30.7,40,G);
+    for(const[tx,tz]of[[14,14],[66,14],[14,66],[66,66]])addTree(G,tx,tz,ds2,true);
     bs.push([ox+34,oz+34,ox+46,oz+46]);
     scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
   }
 
-  // Station-Service & Garage Réparation (chunk 2,4) avec auvent lumineux
+  // Station-Service & Garage Réparation (chunk 2,4)
   if(cx===2&&cz===4){
     bx(28,0.34,24,0x475569,25,0.17,25,G);
-    bx(20,0.6,14,0xdc2626,25,6.2,25,G);
-    bx(20.4,0.3,14.4,new THREE.MeshBasicMaterial({color:0xfacc15}),25,6.6,25,G);
-    for(const px of[17,33])for(const pz of[20,30])cyl(0.35,0.35,6,10,0xf8fafc,px,3,pz,G);
-    bx(1.4,2.4,1.0,0xef4444,21,1.3,25,G);
-    bx(1.4,2.4,1.0,0x2563eb,29,1.3,25,G);
+    bx(20,0.6,14,0xdc2626,25,6.4,25,G);
+    bx(20.4,0.3,14.4,new THREE.MeshBasicMaterial({color:0xfacc15}),25,6.8,25,G);
+    for(const px of[17,33])for(const pz of[20,30])cyl(0.35,0.35,6,10,0xf8fafc,px,3.2,pz,G);
+    bx(1.4,2.4,1.0,0xef4444,21,1.5,25,G);
+    bx(1.4,2.4,1.0,0x2563eb,29,1.5,25,G);
+    addTree(G,55,55,ds2,false);
     scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
   }
 
   for(let i=0;i<4;i++){
     const h=hs(cx*11+i,cz*17+i*5),lx=25+(i%2)*30,lz=25+(i>>1)*30,t=h%10,col=PALETTE[h%PALETTE.length];
     if(cx===3&&cz===3&&i===0){
-      bx(20,7.5,16,0x1e293b,lx,3.75,lz,G);
-      bx(20.6,1.2,16.6,new THREE.MeshBasicMaterial({color:0xfacc15}),lx,7.8,lz,G);
-      bx(13,1.5,0.4,new THREE.MeshBasicMaterial({color:0x00e676}),lx,5.8,lz+8.2,G);
-      bx(3.2,3.8,0.4,0xff4081,lx,1.9,lz+8.2,G);
+      // Boutique & Armurerie signalée
+      bx(20,7.5,16,0x1e293b,lx,4.0,lz,G);
+      bx(20.6,1.2,16.6,new THREE.MeshBasicMaterial({color:0xfacc15}),lx,8.0,lz,G);
+      bx(13,1.5,0.4,new THREE.MeshBasicMaterial({color:0x00e676}),lx,6.0,lz+8.2,G);
+      bx(3.2,3.8,0.4,0xff4081,lx,2.1,lz+8.2,G);
+      const pad=new THREE.Mesh(new THREE.RingGeometry(1.1,1.65,24),new THREE.MeshBasicMaterial({color:0x38bdf8,side:THREE.DoubleSide}));
+      pad.rotation.x=-PI/2;pad.position.set(lx,0.29,lz+9.6);G.add(pad);ds2.push(pad.geometry);
       bs.push([ox+lx-10,oz+lz-8,ox+lx+10,oz+lz+8]);
       continue;
     }
@@ -306,9 +411,7 @@ function createChunk(cx,cz){
       bx(22,0.38,22,0x2e7d32,lx,0.19,lz,G);
       for(let j=0;j<4;j++){
         const tx=lx-7+(j%2)*14+((h>>j)&3)-1,tz=lz-7+(j>>1)*14;
-        cyl(0.28,0.42,4.2,8,0x5d4037,tx,2.2,tz,G);
-        const crown=new THREE.Mesh(new THREE.DodecahedronGeometry(2.6,1),mt(0x1b5e20,0.85));
-        crown.position.set(tx,5.0,tz);G.add(crown);ds2.push(crown.geometry);
+        addTree(G,tx,tz,ds2,j%2===0);
       }
     }else{
       const isHouse=t<6,w=isHouse?15:21+h%4,d=isHouse?13:21+(h>>3)%4,ht=isHouse?7.2:16+(h>>4)%24;
@@ -320,15 +423,19 @@ function createChunk(cx,cz){
       });
       const rm=mt(isHouse?0x881337:0x334155,0.85);
       ds.push(tx,em,sm);buildingMats.push(sm);
-      const m=bx(w,ht,d,sm,lx,ht/2,lz,G);m.material=[sm,sm,rm,rm,sm,sm];
-      bx(w+0.8,0.7,d+0.8,0x334155,lx,ht+0.35,lz,G);
+      const m=bx(w,ht,d,sm,lx,ht/2+0.26,lz,G);m.material=[sm,sm,rm,rm,sm,sm];
+      bx(w+0.8,0.7,d+0.8,0x334155,lx,ht+0.61,lz,G);
       bs.push([ox+lx-w/2,oz+lz-d/2,ox+lx+w/2,oz+lz+d/2]);
       if(isHouse){
         const roof=new THREE.Mesh(new THREE.ConeGeometry(11.8,4.6,4),mt(0x881337,0.8));
-        roof.rotation.y=PI/4;roof.position.set(lx,ht+2.6,lz);G.add(roof);ds2.push(roof.geometry);
-        bx(2.2,3.4,0.35,0xb91c1c,lx,1.7,lz+d/2+0.18,G);
-        bx(0.8,0.8,0.8,new THREE.MeshBasicMaterial({color:0xfacc15}),lx,4.4,lz+d/2+0.45,G);
-        ds.push({x:ox+lx,z:oz+lz+d/2+1.8});
+        roof.rotation.y=PI/4;roof.position.set(lx,ht+2.86,lz);G.add(roof);ds2.push(roof.geometry);
+        // Porte visitable clairement identifiée par une arche lumineuse et un tapis vert au sol
+        bx(2.4,3.5,0.35,0x059669,lx,2.01,lz+d/2+0.18,G);
+        bx(3.2,0.45,0.5,new THREE.MeshBasicMaterial({color:0x00e676}),lx,3.95,lz+d/2+0.25,G);
+        const pad=new THREE.Mesh(new THREE.RingGeometry(1.0,1.55,24),new THREE.MeshBasicMaterial({color:0x00e676,side:THREE.DoubleSide}));
+        pad.rotation.x=-PI/2;pad.position.set(lx,0.29,lz+d/2+1.8);G.add(pad);ds2.push(pad.geometry);
+        const doorObj={x:ox+lx,z:oz+lz+d/2+1.8};
+        ds.push(doorObj);enterableDoors.push(doorObj);
       }
     }
   }
@@ -340,6 +447,8 @@ function removeChunk(k){
   for(const o of c.ds){
     const idx=buildingMats.indexOf(o);
     if(idx>=0)buildingMats.splice(idx,1);
+    const dIdx=enterableDoors.indexOf(o);
+    if(dIdx>=0)enterableDoors.splice(dIdx,1);
     if(o.dispose)o.dispose();
   }
   for(const g of c.ds2)g.dispose();
@@ -379,3 +488,4 @@ function rayWall(ox,oz,fx,fz,maxD){
   }
   return best;
 }
+
