@@ -4,40 +4,47 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>CAMEROUN STORIES 3D · Payback Edition</title>
+<title>CAMEROUN STORIES 3D · Yaoundé City</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- RÉTICULE DE VISÉE DYNAMIQUE AU CENTRE DE L'ÉCRAN -->
+<!-- RÉTICULE DE VISÉE RAYCAST 3D -->
 <div id="crosshair">
   <div class="ch-ring"></div>
   <div class="ch-dot"></div>
 </div>
 
-<!-- RADAR SYNCHRONISÉ CLIQUABLE POUR OUVRIR LA GRANDE CARTE -->
+<!-- BANDES CINÉMATIQUES FAÇON GTA LORS DES BRIEFINGS -->
+<div class="cine-bar" id="cine-top"></div>
+<div class="cine-bar" id="cine-bot"></div>
+
+<!-- RADAR + ÉTOILES DE POLICE JUSTE EN DESSOUS -->
 <div class="hud" id="radar-wrap" onclick="openBigMap()" title="Appuyer pour ouvrir la grande carte">
   <canvas id="radar" width="124" height="124"></canvas>
   <div id="map-pill">🗺️ CARTE</div>
 </div>
 
-<!-- STATUT COMPACT SOUS LE RADAR -->
+<div class="hud" id="wanted-box">
+  <div id="stars">☆☆☆☆☆</div>
+  <div id="wanted-label">RECHERCHE POLICE</div>
+</div>
+
+<!-- STATUT JOUEUR & QUARTIER -->
 <div class="hud" id="hud-tl">
   <div class="stat-row"><span class="stat-ico">❤️</span><div class="bar-bg"><div id="hp-bar"></div></div></div>
   <div class="stat-row"><span class="stat-ico">🛡️</span><div class="bar-bg"><div id="ar-bar"></div></div></div>
   <div class="stat-row"><span class="stat-ico">⚡</span><div class="bar-bg"><div id="st-bar"></div></div></div>
-  <div id="zone-tag">📍 YAOUNDÉ · BOULEVARD DU 20 MAI</div>
+  <div id="zone-tag">📍 CENTRE-VILLE · BD DU 20 MAI</div>
 </div>
 
-<!-- HUD SUPÉRIEUR DROIT STYLE PAYBACK 2 -->
+<!-- HUD SUPÉRIEUR DROIT -->
 <div class="hud" id="hud-tr">
   <div class="tr-top">
-    <span id="stars">☆☆☆☆☆</span>
     <span id="clock-tag">14:00</span>
   </div>
   <div id="cash">500 FCFA</div>
   <div id="weapon-info" onclick="switchWeapon()" title="Appuyer pour changer d'arme">🔫 Pistolet 9mm ↻</div>
-  <div id="mission-timer"></div>
 </div>
 
 <!-- COMPTEUR DE VITESSE EN VOITURE -->
@@ -46,26 +53,56 @@
   <div class="car-hp-bg"><div id="car-hp-bar"></div></div>
 </div>
 
-<!-- BANDEAU OBJECTIF & DISTANCE GPS -->
-<div class="hud" id="obj-banner">🎯 Objectif : Rejoins le point de mission</div>
+<!-- CARTE TACTIQUE DE MISSION PROFESSIONNELLE -->
+<div class="hud" id="mission-card">
+  <div class="mc-header">
+    <span id="mc-badge">CONTRAT ACTIF</span>
+    <span id="mc-timer">⏱ 60s</span>
+  </div>
+  <div id="mc-title">Le Rendez-vous du Patron</div>
+  <div id="mc-desc">Rejoins le point doré (M) pour rencontrer le contact.</div>
+  <div class="mc-footer">
+    <span id="mc-dist">📍 120 m</span>
+    <span id="mc-reward">💰 +500 FCFA</span>
+  </div>
+</div>
+
 <div class="hud" id="toast"></div>
 
-<!-- BULLE DIALOGUE AGENT IA PNJ -->
+<!-- BULLE DIALOGUE PNJ IA -->
 <div class="hud" id="npc-bubble">
   <div id="npc-name">Moussa · Taximan</div>
   <div id="npc-text">Bienvenue à Yaoundé !</div>
+</div>
+
+<!-- PANNEAU CINÉMATIQUE DE BRIEFING DE MISSION FAÇON GTA -->
+<div class="overlay" id="briefing-modal">
+  <div class="brief-card">
+    <div class="brief-top">
+      <span class="brief-tag" id="brief-chapter">CHAPITRE 1</span>
+      <span class="brief-pay" id="brief-reward">💰 +500 FCFA</span>
+    </div>
+    <h3 id="brief-title">Titre de la Mission</h3>
+    <div class="brief-speaker" id="brief-speaker">🗣️ Le Patron · Caïd de Yaoundé</div>
+    <p id="brief-text">Dialogue du contact...</p>
+    <div class="brief-obj-box" id="brief-obj">🎯 Objectif : ...</div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="bt" id="btn-accept-mission">▶ ACCEPTER LA MISSION</button>
+      <button class="bt sec" id="btn-decline-mission">PLUS TARD</button>
+    </div>
+  </div>
 </div>
 
 <!-- BOUTONS RAPIDES HAUT DROITE -->
 <button class="top-btn" id="btn-pause" title="Pause">❚❚</button>
 <button class="top-btn" id="btn-radio" title="Radio FM">📻</button>
 
-<!-- ZONES TACTILES (JOYSTICK À GAUCHE, CAMÉRA À DROITE) -->
+<!-- ZONES TACTILES -->
 <div id="lz"></div>
 <div id="jz"></div>
 <div id="jb"><div id="jk"></div></div>
 
-<!-- CONTRÔLES TACTILES ÉPURÉS STYLE PAYBACK 2 : MODE À PIED -->
+<!-- CONTRÔLES TACTILES : À PIED -->
 <div id="controls-foot" class="t-group">
   <button class="tbtn t-fire" data-k="fire" title="Tirer">🔫</button>
   <button class="tbtn t-aim" data-k="aim" title="Viser avec précision">🎯</button>
@@ -73,7 +110,7 @@
   <button class="tbtn t-act" data-k="act" title="Action">🚗</button>
 </div>
 
-<!-- CONTRÔLES TACTILES ÉPURÉS STYLE PAYBACK 2 : MODE EN VOITURE -->
+<!-- CONTRÔLES TACTILES : EN VOITURE -->
 <div id="controls-car" class="t-group" style="display:none">
   <button class="tbtn t-gas" data-k="gas" title="Accélérer">▲</button>
   <button class="tbtn t-brake" data-k="brake" title="Freiner / Marche arrière">▼</button>
@@ -81,26 +118,27 @@
   <button class="tbtn t-exit" data-k="act" title="Sortir du véhicule">🚪</button>
 </div>
 
-<!-- GRANDE CARTE INTERACTIVE DE LA VILLE -->
+<!-- GRANDE CARTE STRUCTURÉE DE LA VILLE -->
 <div class="overlay" id="big-map-modal">
   <div class="map-box">
     <div class="map-header">
       <div>
-        <h3>🗺️ CARTE DE YAOUNDÉ & GPS</h3>
-        <small>Touche n'importe où sur la carte pour placer un repère GPS</small>
+        <h3>🗺️ CARTE OFFICIELLE DE YAOUNDÉ & TERRITOIRE</h3>
+        <small id="map-cursor-info">Touche n'importe où sur la carte pour placer un repère GPS</small>
       </div>
       <div class="map-actions">
         <button class="bt sec" onclick="clearCustomWaypoint()">Effacer GPS</button>
         <button class="bt" onclick="closeBigMap()">FERMER</button>
       </div>
     </div>
-    <canvas id="big-map" width="520" height="520"></canvas>
+    <canvas id="big-map" width="560" height="560"></canvas>
     <div class="map-legend">
       <span><i style="background:#ff4081"></i> Toi</span>
-      <span><i style="background:#ffd54f"></i> Mission</span>
+      <span><i style="background:#ffd54f"></i> Mission (M)</span>
       <span><i style="background:#00e676"></i> Repère GPS</span>
-      <span><i style="background:#38bdf8"></i> Boutique</span>
-      <span><i style="background:#fb923c"></i> Station-Service</span>
+      <span><i style="background:#2dd4bf"></i> Villa Visitable</span>
+      <span><i style="background:#38bdf8"></i> Armurerie/Shop</span>
+      <span><i style="background:#fb923c"></i> Station</span>
       <span><i style="background:#2979ff"></i> Police</span>
     </div>
   </div>
@@ -167,8 +205,8 @@
     <button class="bt danger" id="btn-reset">RÉINITIALISER</button>
   </div>
   <div id="how">
-    <b>À pied :</b> Joystick gauche = marcher · <b>🎯</b> = viser (laser + zoom épaule) · <b>🔫</b> = tirer de vraies balles · <b>🏃</b> (maintenir = courir, tap = sauter) · <b>🚗/💬/🏠</b> = monter en voiture, parler aux PNJ IA ou entrer · Touche le radar pour ouvrir la <b>Grande Carte</b>.<br>
-    <b>En voiture (Style Payback 2) :</b> Joystick gauche = tourner · <b>▲</b> = Accélérer · <b>▼</b> = Freiner puis Marche arrière · <b>🔫</b> = Tirer en roulant · <b>🚪</b> = Sortir.
+    <b>À pied :</b> Joystick gauche = marcher · <b>🎯</b> = viser au laser · <b>🔫</b> = tirer droit sur le viseur · <b>🏃</b> (maintenir = courir, tap = sauter) · <b>🚗/🏠/💬</b> = ouvrir la porte et extraire un conducteur, entrer dans les maisons illuminées en vert, ou parler aux contacts.<br>
+    <b>En voiture :</b> Joystick gauche = tourner · <b>▲</b> = Accélérer · <b>▼</b> = Freiner puis Marche arrière · <b>🔫</b> = Tirer · <b>🚪</b> = Sortir.
   </div>
 </div>
 
