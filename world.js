@@ -56,7 +56,7 @@ function getGroundY(x,z,interiorType=null){
 const MC={},GC={},mt=(c,r=0.82,m=0.08)=>MC[c+'_'+r+'_'+m]||(MC[c+'_'+r+'_'+m]=new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m}));
 function bx(w,h,d,c,x,y,z,p){
   const k=w+'_'+h+'_'+d,m=new THREE.Mesh(GC[k]||(GC[k]=new THREE.BoxGeometry(w,h,d)),typeof c==='object'?c:mt(c));
-  m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;(p||scene).add(m);return m;
+  m.position.set(x,y,z);m.castShadow=Math.max(w,h,d)>0.5;m.receiveShadow=true;(p||scene).add(m);return m;
 }
 function cyl(rt,rb,h,seg,c,x,y,z,p){
   const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),typeof c==='object'?c:mt(c));
@@ -395,6 +395,11 @@ function buildVehicle(col,type){
   bx(0.08,0.54,1.24,bodyMat,0,0,-0.62,doorL);
   bx(0.10,0.05,0.22,chromeMat,-0.02,0.16,-1.02,doorL);
   g.add(doorL);g.userData.doorL=doorL;
+  const doorR=new THREE.Group();
+  doorR.position.set(1.06,0.79,0.55);
+  bx(0.08,0.54,1.24,bodyMat,0,0,-0.62,doorR);
+  bx(0.10,0.05,0.22,chromeMat,0.02,0.16,-1.02,doorR);
+  g.add(doorR);g.userData.doorR=doorR;
 
   g.userData.wheels=[];g.userData.steerPivots=[];
   for(const[wx,wz,isFront]of[[-1.04,1.48,true],[1.04,1.48,true],[-1.04,-1.48,false],[1.04,-1.48,false]]){
@@ -561,7 +566,7 @@ function createChunk(cx,cz){
   if((cx===1&&cz===2)||(cx===7&&cz===7)||(cx===2&&cz===7)){   // QUARTIER POPULAIRE
     bx(60,0.3,60,0x7c5b3b,40,0.15,40,G);
     for(let r=0;r<3;r++)for(let k=0;k<3;k++){
-      const hh=hs(cx*7+r,cz*13+k),hx=17+k*23,hz=17+r*23,wd=8+hh%4,dp=7+(hh>>3)%3,ht=3.2+(hh>>5)%2*0.6;
+      const hh=hs(cx*7+r,cz*13+k),hx=17+k*23,hz=17+r*23,wd=8+hh%4,dp=7+(hh>>>3)%3,ht=3.2+(hh>>>5)%2*0.6;
       const wall=[0xd6b98c,0xbfa27a,0xe7c9a0,0xa7c4b5][hh%4];
       bx(wd,ht,dp,wall,hx,ht/2+0.3,hz,G);
       const roof=bx(wd+1,0.2,dp+1,0x9a3412,hx,ht+0.5,hz,G);roof.rotation.z=0.1;   // toit en tôle
@@ -620,7 +625,7 @@ function createChunk(cx,cz){
         addTree(G,tx,tz,ds2,j%2===0);
       }
     }else{
-      const isHouse=t<6,w=isHouse?15:21+h%4,d=isHouse?13:21+(h>>3)%4,ht=isHouse?7.2:16+(h>>4)%24;
+      const isHouse=t<6,w=isHouse?15:21+h%4,d=isHouse?13:21+(h>>>3)%4,ht=isHouse?7.2:16+(h>>>4)%24;
       const tx=facadeTex.clone();tx.needsUpdate=true;tx.repeat.set(w/10,ht/10);
       const em=windowGlowTex.clone();em.needsUpdate=true;em.repeat.set(w/10,ht/10);
       const sm=new THREE.MeshStandardMaterial({
@@ -681,6 +686,10 @@ function hitBuilding(e,r){
       const x=cl(e.x,q[0],q[2]),z=cl(e.z,q[1],q[3]),dx=e.x-x,dz=e.z-z,d2=dx*dx+dz*dz;
       if(d2<r*r){if(d2>1e-6){const d=Math.sqrt(d2);e.x+=dx/d*(r-d);e.z+=dz/d*(r-d);}else e.x+=r;h=1;}
     }
+  }
+  if(typeof VENDORS!=='undefined')for(const v of VENDORS){
+    const dx=e.x-v.x,dz=e.z-v.z,d2=dx*dx+dz*dz,rr=r+1.2;
+    if(d2<rr*rr&&d2>1e-6){const d=Math.sqrt(d2);e.x+=dx/d*(rr-d);e.z+=dz/d*(rr-d);h=1;}
   }
   e.x=cl(e.x,3,WS-3);e.z=cl(e.z,3,WS-3);return h;
 }

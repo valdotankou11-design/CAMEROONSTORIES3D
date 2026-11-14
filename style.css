@@ -189,3 +189,15 @@ body.t #jz,body.t #lz{display:block}
 #act-card{left:calc(12px + env(safe-area-inset-left,0px));top:calc(182px + env(safe-area-inset-top,0px));width:176px;background:var(--panel);border:1px solid var(--border);border-left:3px solid #f97316;border-radius:6px;padding:6px 9px;display:none}
 #act-title{font-size:11px;font-weight:800;color:#fb923c;letter-spacing:.5px}
 #act-info{font-size:10.5px;color:#e2e8f0;margin-top:2px;line-height:1.35}
+
+#ctx-prompt{left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));background:rgba(8,12,20,0.82);border:1px solid rgba(255,255,255,0.22);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:#f8fafc;display:none;white-space:nowrap;letter-spacing:.3px}
+.map-legend span{background:rgba(255,255,255,0.05);border-radius:999px;padding:2px 8px}
+
+#gps-dist{left:50%;transform:translateX(-50%);top:calc(46px + env(safe-area-inset-top,0px));background:rgba(8,12,20,0.78);border:1px solid rgba(255,255,255,0.2);border-radius:999px;padding:3px 11px;font-size:11px;font-weight:800;color:#fde047;display:none;letter-spacing:.4px}
+
+#settings{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+.set-row{display:flex;flex-direction:column;gap:4px}
+.set-row>span{font-size:11px;font-weight:800;letter-spacing:.6px;color:#cbd5e1}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chips button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);color:#e2e8f0;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.chips button.on{background:var(--gold);color:#111827;border-color:var(--gold)}

@@ -73,6 +73,8 @@
 <div class="hud" id="toast"></div>
 
 <!-- ACTIVITÉ SECONDAIRE EN COURS -->
+<div class="hud" id="ctx-prompt"></div>
+<div class="hud" id="gps-dist"></div>
 <div class="hud" id="act-card"><div id="act-title"></div><div id="act-info"></div></div>
 
 <!-- SOUS-TITRES DE CINÉMATIQUE (toucher pour passer) -->
@@ -167,15 +169,7 @@
       </div>
     </div>
     <canvas id="big-map" width="560" height="560"></canvas>
-    <div class="map-legend">
-      <span><i style="background:#ef4444"></i> Position</span>
-      <span><i style="background:#eab308"></i> Mission (M)</span>
-      <span><i style="background:#22c55e"></i> Repère GPS</span>
-      <span><i style="background:#14b8a6"></i> Villas</span>
-      <span><i style="background:#38bdf8"></i> Armurerie</span>
-      <span><i style="background:#a855f7"></i> Salle de Sport</span>
-      <span><i style="background:#f97316"></i> Restaurant / Station</span>
-    </div>
+    <div class="map-legend" id="map-legend"></div>
   </div>
 </div>
 
@@ -253,6 +247,12 @@
       <button class="bt primary" id="btn-play">CONTINUER LA PARTIE</button>
       <button class="bt ghost" id="btn-how">COMMANDES</button>
       <button class="bt danger" id="btn-reset">NOUVELLE PARTIE</button>
+    </div>
+    <div id="settings">
+      <div class="set-row"><span>🕒 Heure</span><div class="chips" id="chips-time">
+        <button data-v="auto">Auto</button><button data-v="morning">🌅 Matin</button><button data-v="noon">☀️ Midi</button><button data-v="evening">🌇 Soir</button><button data-v="night">🌙 Nuit</button></div></div>
+      <div class="set-row"><span>🌦️ Météo</span><div class="chips" id="chips-wx">
+        <button data-v="auto">Auto</button><button data-v="clear">☀️ Clair</button><button data-v="rain">🌧️ Pluie</button><button data-v="fog">🌫️ Brume</button><button data-v="storm">⛈️ Orage</button></div></div>
     </div>
     <div id="how">
       <b>Déplacements & Combat :</b> Joystick gauche = marcher · Glisser à droite = caméra · <b>Viser</b> = zoom épaule + laser · <b>Tirer</b> = tir balistique · <b>Recharger (R)</b> = changer de chargeur · Touche le boîtier d'arme en haut à droite (ou <b>Tab</b>) pour changer d'arme.<br>
