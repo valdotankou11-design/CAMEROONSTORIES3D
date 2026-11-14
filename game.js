@@ -1,31 +1,51 @@
 'use strict';
 const $=id=>document.getElementById(id);
 
+// ===== CATALOGUE DES ARMES (CHARGEURS, CADENCE, PORTÉE, BALISTIQUE)
+const WEAPONS={
+  pistol:{name:'Pistolet 9mm',magSize:12,cd:0.25,dmg:32,spd:135,pellets:1,spread:0.01,infiniteReserve:true},
+  smg:{name:'Mitraillette Uzi',magSize:30,cd:0.095,dmg:19,spd:130,pellets:1,spread:0.045,infiniteReserve:false},
+  shotgun:{name:'Fusil à Pompe',magSize:8,cd:0.65,dmg:24,spd:115,pellets:5,spread:0.11,infiniteReserve:false},
+  rifle:{name:'Fusil AK-47',magSize:30,cd:0.145,dmg:44,spd:160,pellets:1,spread:0.02,infiniteReserve:false},
+  sniper:{name:'Fusil Sniper M24',magSize:5,cd:0.85,dmg:120,spd:210,pellets:1,spread:0.002,infiniteReserve:false}
+};
+
 // ===== SAUVEGARDE LOCALE
-const SAVE_KEY='cameroun_stories_yaounde_v6';
+const SAVE_KEY='cameroun_stories_studio_v7';
 const defaultSave=()=>({
-  cash:500,hp:100,armor:50,missionIdx:0,weapons:['pistol'],curWeapon:'pistol',
+  cash:650,hp:100,armor:50,maxStamina:100,missionIdx:0,
+  weapons:['pistol','smg'],curWeapon:'pistol',
+  mag:{pistol:12,smg:30,shotgun:8,rifle:30,sniper:5},
+  reserve:{smg:90,shotgun:24,rifle:90,sniper:15},
   px:3*CS+18,pz:3*CS+12
 });
 let SAVE=defaultSave();
 function loadSave(){
-  try{const raw=localStorage.getItem(SAVE_KEY);if(raw)SAVE=Object.assign(defaultSave(),JSON.parse(raw));}catch(e){}
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      SAVE=Object.assign(defaultSave(),parsed);
+      SAVE.mag=Object.assign(defaultSave().mag,parsed.mag||{});
+      SAVE.reserve=Object.assign(defaultSave().reserve,parsed.reserve||{});
+    }
+  }catch(e){}
   updateSaveUI();
 }
 function writeSave(){
   try{
     SAVE.cash=Math.round(P.cash);SAVE.hp=Math.round(P.hp);SAVE.armor=Math.round(P.armor);
-    if(!inside){SAVE.px=Math.round(P.x*10)/10;SAVE.pz=Math.round(P.z*10)/10;}
+    if(!interiorType){SAVE.px=Math.round(P.x*10)/10;SAVE.pz=Math.round(P.z*10)/10;}
     localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));
     updateSaveUI();
   }catch(e){}
 }
 function updateSaveUI(){
   const m=STORY_MISSIONS[SAVE.missionIdx];
-  $('save-summary').innerHTML=`💾 <b>Sauvegarde :</b> ${SAVE.cash} FCFA · ${m?m.title:'Mode Libre Yaoundé'}`;
+  $('save-summary').innerHTML=`Profil : <b>${SAVE.cash} FCFA</b> · ${m?m.title:'Mode Libre Yaoundé'}`;
 }
 
-// ===== MOTEUR AUDIO PROCÉDURAL & RADIO FM
+// ===== AUDIO PROCÉDURAL (TIRS, RECHARGEMENT, BRIS DE VITRE, BOXE, RADIO)
 let AC=null,radioIdx=0,radioTimer=0,radioStep=0;
 const RADIOS=[
   {name:'CRTV FM · Makossa',tempo:0.24,notes:[261.6,329.6,392.0,329.6,440.0,392.0,329.6,293.7]},
@@ -48,9 +68,20 @@ function playTone(freq,dur,type='sine',vol=0.05,slide=0){
   }catch(e){}
 }
 function playGunshot(wep){
-  const f=wep==='rifle'?460:wep==='smg'?530:380;
-  playTone(f,wep==='smg'?0.06:0.11,'sawtooth',0.06,60);
-  playTone(135,0.09,'square',0.04,35);
+  if(wep==='shotgun'){playTone(220,0.18,'sawtooth',0.09,40);playTone(95,0.22,'square',0.07,28);}
+  else if(wep==='sniper'){playTone(620,0.22,'sawtooth',0.09,50);playTone(140,0.2,'square',0.06,30);}
+  else{
+    const f=wep==='rifle'?460:wep==='smg'?530:380;
+    playTone(f,wep==='smg'?0.06:0.11,'sawtooth',0.06,60);
+    playTone(135,0.09,'square',0.04,35);
+  }
+}
+function playGlassShatter(){
+  for(let k=0;k<4;k++)setTimeout(()=>playTone(1600+R()*1400,0.09,'triangle',0.045,420),k*28);
+}
+function playReloadSound(){
+  playTone(520,0.07,'square',0.04,320);
+  setTimeout(()=>playTone(760,0.09,'square',0.05,940),260);
 }
 function playHorn(){
   playTone(440,0.14,'sawtooth',0.045);
@@ -69,58 +100,103 @@ function updateRadio(dt){
   }
 }
 
-// ===== INTÉRIEUR VILLA LUXE DÉTAILLÉ (SOL À Y = +0.15m)
-const room=new THREE.Group();scene.add(room);
-bx(18,0.3,16,0xd4a373,IX,0,IZ,room);
-// Tapis central & carrelage décoratif
-bx(7.2,0.04,5.4,0x991b1b,IX-1.2,0.17,IZ-1.2,room);
-bx(6.6,0.05,4.8,0xfef3c7,IX-1.2,0.175,IZ-1.2,room);
-for(const[w,d,x,z]of[[18,0.5,0,-8],[18,0.5,0,8],[0.5,16,-9,0],[0.5,16,9,0]])bx(w,5.4,d,0xfefae0,IX+x,2.7,IZ+z,room);
-bx(18,0.3,16,0xf8fafc,IX,5.4,IZ,room);
-// Lustre lumineux au plafond
-cyl(0.08,0.08,0.9,8,0x334155,IX,4.9,IZ,room);
-cyl(0.65,0.45,0.28,12,new THREE.MeshBasicMaterial({color:0xfef08a}),IX,4.45,IZ,room);
+// ===== CONSTRUCTION DES 4 INTÉRIEURS VIVANTS (VILLA, SALLE DE SPORT, RESTAURANT, ARMURERIE)
+const interiorNPCs=[];
+const INTERIORS={
+  villa:{ix:IX_VILLA,iz:IZ_VILLA,w:18,d:16,obs:[]},
+  gym:{ix:IX_GYM,iz:IZ_GYM,w:20,d:18,obs:[]},
+  restaurant:{ix:IX_RESTO,iz:IZ_RESTO,w:20,d:18,obs:[]},
+  armory:{ix:IX_ARMORY,iz:IZ_ARMORY,w:18,d:16,obs:[]}
+};
 
-// Canapé d'angle avec coussins & accoudoirs + Table basse vitrée + Meuble TV & Écran plat
-bx(4.4,0.55,1.5,0x1e3a8a,IX-1.2,0.42,IZ-3.4,room);
-bx(4.4,0.75,0.35,0x172554,IX-1.2,0.95,IZ-4.0,room);
-bx(0.35,0.65,1.5,0x172554,IX-3.3,0.62,IZ-3.4,room);
-bx(0.35,0.65,1.5,0x172554,IX+0.9,0.62,IZ-3.4,room);
-bx(2.4,0.45,1.2,0x78350f,IX-1.2,0.38,IZ-1.2,room);
-bx(2.2,0.06,1.0,0x38bdf8,IX-1.2,0.62,IZ-1.2,room);
-// Meuble TV + Téléviseur LED
-bx(3.4,0.7,0.9,0x451a03,IX-1.2,0.5,IZ+1.6,room);
-bx(2.6,1.45,0.14,0x0f172a,IX-1.2,1.65,IZ+1.6,room);
-bx(2.4,1.25,0.16,new THREE.MeshBasicMaterial({color:0x0284c7}),IX-1.2,1.65,IZ+1.62,room);
-
-// Lit double avec oreillers & table de nuit à droite
-bx(3.6,0.55,4.2,0x7f1d1d,IX+5.8,0.42,IZ-4.5,room);
-bx(3.4,0.22,3.9,0xf8fafc,IX+5.8,0.75,IZ-4.5,room);
-bx(1.1,0.18,0.65,0x38bdf8,IX+4.9,0.92,IZ-5.9,room);
-bx(1.1,0.18,0.65,0x38bdf8,IX+6.7,0.92,IZ-5.9,room);
-
-// Table à manger & chaises + Plantes vertes d'intérieur
-bx(2.8,0.14,1.8,0x92400e,IX-5.8,1.05,IZ+3.2,room);
-for(const[lx,lz]of[[-7.0,2.5],[-4.6,2.5],[-7.0,3.9],[-4.6,3.9]])cyl(0.08,0.08,0.9,6,0x451a03,IX+lx,0.6,IZ+lz,room);
-for(const[px,pz]of[[-7.8,-6.8],[7.8,6.8]]){
-  cyl(0.38,0.28,0.65,10,0xb45309,IX+px,0.48,IZ+pz,room);
-  const pl=new THREE.Mesh(new THREE.DodecahedronGeometry(0.65,1),mt(0x15803d,0.8));
-  pl.position.set(IX+px,1.15,IZ+pz);room.add(pl);
+function buildRoomShell(ix,iz,w,d,floorCol,wallCol,ceilCol){
+  const g=new THREE.Group();scene.add(g);
+  bx(w,0.3,d,floorCol,ix,0,iz,g);
+  bx(w,5.4,0.4,wallCol,ix,2.7,iz-d/2,g);
+  bx(w,5.4,0.4,wallCol,ix,2.7,iz+d/2,g);
+  bx(0.4,5.4,d,wallCol,ix-w/2,2.7,iz,g);
+  bx(0.4,5.4,d,wallCol,ix+w/2,2.7,iz,g);
+  bx(w,0.3,d,ceilCol,ix,5.4,iz,g);
+  cyl(0.08,0.08,0.8,8,0x334155,ix,5.0,iz,g);
+  cyl(0.65,0.45,0.25,12,new THREE.MeshBasicMaterial({color:0xfef08a}),ix,4.55,iz,g);
+  // Porte de sortie naturelle en bois
+  bx(2.2,3.4,0.25,0x78350f,ix,1.85,iz+d/2-0.25,g);
+  bx(2.5,0.25,0.35,new THREE.MeshBasicMaterial({color:0x22c55e}),ix,3.7,iz+d/2-0.25,g);
+  return g;
 }
 
-// Porte de sortie lumineuse
-bx(2.2,3.8,0.3,0xd32f2f,IX,2.05,IZ+7.8,room);
-bx(2.6,0.35,0.4,new THREE.MeshBasicMaterial({color:0x00e676}),IX,4.1,IZ+7.7,room);
-
-const roomObs=[
-  [IX-3.5,IZ-4.2,IX+1.1,IZ-2.6],
-  [IX-2.4,IZ-1.8,IX+0.0,IZ-0.6],
-  [IX-2.9,IZ+1.1,IX+0.5,IZ+2.1],
-  [IX+4.0,IZ-6.6,IX+7.6,IZ-2.4],
-  [IX-7.2,IZ+2.3,IX-4.4,IZ+4.1]
+// 1. VILLA RÉSIDENTIELLE
+const villaGrp=buildRoomShell(IX_VILLA,IZ_VILLA,18,16,0xd4a373,0xfefae0,0xf8fafc);
+bx(7.2,0.04,5.4,0x991b1b,IX_VILLA-1.2,0.17,IZ_VILLA-1.2,villaGrp);
+bx(4.4,0.55,1.5,0x1e3a8a,IX_VILLA-1.2,0.42,IZ_VILLA-3.4,villaGrp);
+bx(4.4,0.75,0.35,0x172554,IX_VILLA-1.2,0.95,IZ_VILLA-4.0,villaGrp);
+bx(2.4,0.45,1.2,0x78350f,IX_VILLA-1.2,0.38,IZ_VILLA-1.2,villaGrp);
+bx(3.4,0.7,0.9,0x451a03,IX_VILLA-1.2,0.5,IZ_VILLA+1.6,villaGrp);
+bx(2.6,1.45,0.14,0x0f172a,IX_VILLA-1.2,1.65,IZ_VILLA+1.6,villaGrp);
+bx(2.4,1.25,0.16,new THREE.MeshBasicMaterial({color:0x0284c7}),IX_VILLA-1.2,1.65,IZ_VILLA+1.62,villaGrp);
+bx(3.6,0.55,4.2,0x7f1d1d,IX_VILLA+5.8,0.42,IZ_VILLA-4.5,villaGrp);
+bx(3.4,0.22,3.9,0xf8fafc,IX_VILLA+5.8,0.75,IZ_VILLA-4.5,villaGrp);
+const roomCash=bx(0.95,0.32,0.55,0x22c55e,IX_VILLA-1.2,0.82,IZ_VILLA-1.2,villaGrp);
+const roomMed=bx(0.7,0.45,0.7,0xef4444,IX_VILLA+5.8,1.08,IZ_VILLA-4.5,villaGrp);
+INTERIORS.villa.obs=[
+  [IX_VILLA-3.5,IZ_VILLA-4.2,IX_VILLA+1.1,IZ_VILLA-2.6],
+  [IX_VILLA-2.4,IZ_VILLA-1.8,IX_VILLA+0.0,IZ_VILLA-0.6],
+  [IX_VILLA-2.9,IZ_VILLA+1.1,IX_VILLA+0.5,IZ_VILLA+2.1],
+  [IX_VILLA+4.0,IZ_VILLA-6.6,IX_VILLA+7.6,IZ_VILLA-2.4]
 ];
-const roomCash=bx(0.95,0.32,0.55,0x00e676,IX-1.2,0.82,IZ-1.2,room);
-const roomMed=bx(0.7,0.45,0.7,0xff1744,IX-5.8,1.35,IZ+3.2,room);
+const villaResident=buildHuman(0xec4899,0x7b5438,'mama');
+interiorNPCs.push({type:'villa',m:villaResident,x:IX_VILLA+2.5,z:IZ_VILLA-1.5,h:-PI/2,name:'Tante Clarisse · Résidente',line:'Fais comme chez toi mon fils ! Il y a du cash sur la table basse.'});
+
+// 2. SALLE DE SPORT & BOXE
+const gymGrp=buildRoomShell(IX_GYM,IZ_GYM,20,18,0x1e293b,0x334155,0x0f172a);
+// Tapis de ring bleu
+bx(8.0,0.06,8.0,0x1d4ed8,IX_GYM-2.5,0.18,IZ_GYM-1.5,gymGrp);
+// Sac de frappe suspendu articulé !
+cyl(0.06,0.06,1.6,8,0x94a3b8,IX_GYM-2.5,4.6,IZ_GYM-1.5,gymGrp);
+const punchingBag=new THREE.Group();
+punchingBag.position.set(IX_GYM-2.5,3.8,IZ_GYM-1.5);
+cyl(0.36,0.36,1.65,14,0xdc2626,0,-1.1,0,punchingBag);
+cyl(0.38,0.38,0.22,14,0x111827,0,-0.35,0,punchingBag);
+cyl(0.38,0.38,0.22,14,0x111827,0,-1.85,0,punchingBag);
+gymGrp.add(punchingBag);
+// Bancs de musculation & haltères
+bx(3.2,0.55,0.9,0x0f172a,IX_GYM+5.5,0.42,IZ_GYM-4.5,gymGrp);
+cyl(0.05,0.05,2.4,8,0xe2e8f0,IX_GYM+5.5,1.25,IZ_GYM-4.5,gymGrp);
+bx(3.2,0.55,0.9,0x0f172a,IX_GYM+5.5,0.42,IZ_GYM+0.5,gymGrp);
+INTERIORS.gym.obs=[[IX_GYM+3.8,IZ_GYM-5.2,IX_GYM+7.2,IZ_GYM-3.8],[IX_GYM+3.8,IZ_GYM-0.2,IX_GYM+7.2,IZ_GYM+1.2]];
+const gymCoach=buildHuman(0xeab308,0x5c3c24,'gym');
+interiorNPCs.push({type:'gym',m:gymCoach,x:IX_GYM+2.0,z:IZ_GYM-2.5,h:-PI/3,name:'Coach Samuel · Boxe & Fitness',line:'Approche le sac de frappe et appuie sur BOXER pour renforcer ton endurance !'});
+
+// 3. RESTAURANT LE MBOA
+const restoGrp=buildRoomShell(IX_RESTO,IZ_RESTO,20,18,0xfef3c7,0x7c2d12,0x451a03);
+// Comptoir de service
+bx(8.5,1.15,1.4,0x78350f,IX_RESTO,0.72,IZ_RESTO-4.8,restoGrp);
+bx(8.7,0.12,1.6,0xfacc15,IX_RESTO,1.32,IZ_RESTO-4.8,restoGrp);
+// Tables et chaises clients
+for(const[tx,tz]of[[-5.2,-0.5],[5.2,-0.5],[-5.2,4.2],[5.2,4.2]]){
+  cyl(1.1,1.1,0.1,14,0x92400e,IX_RESTO+tx,0.95,IZ_RESTO+tz,restoGrp);
+  cyl(0.14,0.14,0.8,8,0x451a03,IX_RESTO+tx,0.55,IZ_RESTO+tz,restoGrp);
+}
+INTERIORS.restaurant.obs=[[IX_RESTO-4.5,IZ_RESTO-5.6,IX_RESTO+4.5,IZ_RESTO-4.0]];
+const restoChef=buildHuman(0xf8fafc,0x6f4e37,'chef');
+const restoClient=buildHuman(0x3b82f6,0x8d5524,'student');
+interiorNPCs.push(
+  {type:'restaurant',m:restoChef,x:IX_RESTO,z:IZ_RESTO-6.4,h:0,name:'Chef Nadine · Restaurant Le Mboa',line:'Bienvenue ! Approche le comptoir et appuie sur COMMANDER (150 FCFA) pour un bon Ndolé !'},
+  {type:'restaurant',m:restoClient,x:IX_RESTO-5.2,z:IZ_RESTO-1.6,h:0,name:'Client · Habitué du Mboa',line:'Le poisson braisé et le Ndolé d’ici te remettent sur pied en 2 secondes !'}
+);
+
+// 4. ARMURERIE TACTIQUE
+const armoryGrp=buildRoomShell(IX_ARMORY,IZ_ARMORY,18,16,0x1e293b,0x0f172a,0x090d12);
+bx(8.0,1.15,1.3,0x334155,IX_ARMORY,0.72,IZ_ARMORY-3.8,armoryGrp);
+bx(8.2,0.12,1.5,0x38bdf8,IX_ARMORY,1.32,IZ_ARMORY-3.8,armoryGrp);
+// Râteliers d'armes muraux exposés
+for(let r=0;r<4;r++){
+  bx(2.2,0.12,0.22,0x090d12,IX_ARMORY-4.5+r*3.0,2.5,IZ_ARMORY-7.6,armoryGrp);
+  bx(2.2,0.12,0.22,0x090d12,IX_ARMORY-4.5+r*3.0,1.8,IZ_ARMORY-7.6,armoryGrp);
+}
+INTERIORS.armory.obs=[[IX_ARMORY-4.2,IZ_ARMORY-4.6,IX_ARMORY+4.2,IZ_ARMORY-3.0]];
+const armoryDealer=buildHuman(0x18181b,0x5c3c24,'bir');
+interiorNPCs.push({type:'armory',m:armoryDealer,x:IX_ARMORY,z:IZ_ARMORY-5.4,h:0,name:'Sergent Kotto · Armurier',line:'Approche du comptoir et appuie sur ACHETER pour voir mon arsenal !'});
 
 function nearDoor(){
   const a=Math.floor(P.x/CS),b=Math.floor(P.z/CS);let best=null,bd=4.2;
@@ -131,17 +207,17 @@ function nearDoor(){
   return best;
 }
 
-// ===== 8 MISSIONS SCÉNARISÉES AVEC CONTACTS & CINÉMATIQUE FAÇON GTA
+// ===== 8 MISSIONS SCÉNARISÉES AVEC CINÉMATIQUE VIVANTE
 const STORY_MISSIONS=[
   {
     chapter:'CHAPITRE 1 · DÉBUT À YAOUNDÉ',
     title:'Le Contrat du Monument',
     speaker:'Le Patron · Caïd du Boulevard',
-    contactRole:'vip',contactShirt:0xfacc15,
+    contactRole:'vip',contactShirt:0xeab308,
     cx:3*CS+22,cz:3*CS+18,
     tx:MON_X,tz:MON_Z-16,time:75,reward:500,wantedOnStart:0,
-    briefing:'"Écoute bien petit. Si tu veux te faire un nom à Yaoundé, commence par livrer cette mallette au Monument de la Réunification sans abîmer la caisse."',
-    objective:'Conduis jusqu’au Monument de la Réunification avant la fin du chrono.'
+    briefing:'"Écoute bien. Si tu veux te faire un nom à Yaoundé, commence par livrer cette mallette au Monument de la Réunification avant la fin du chrono."',
+    objective:'Conduis jusqu’au Monument de la Réunification.'
   },
   {
     chapter:'CHAPITRE 2 · AXE MVOG-MBI',
@@ -150,7 +226,7 @@ const STORY_MISSIONS=[
     contactRole:'gang',contactShirt:0xdc2626,
     cx:MON_X+12,cz:MON_Z-12,
     tx:2*CS+14,tz:6*CS+14,time:80,reward:750,wantedOnStart:1,
-    briefing:'"Les flics contrôlent tous les grands carrefours ce soir. Prends le volant, sème les patrouilles et dépose le colis au quartier Sud-Ouest !"',
+    briefing:'"Les patrouilles contrôlent les carrefours ce soir. Prends le volant, sème la police et dépose le colis au quartier Sud-Ouest."',
     objective:'Livre le colis à Ngoa-Ekellé malgré la patrouille de police.'
   },
   {
@@ -160,7 +236,7 @@ const STORY_MISSIONS=[
     contactRole:'bir',contactShirt:0x15803d,
     cx:2*CS+20,cz:6*CS+10,
     type:'combat',count:4,tx:4*CS+14,tz:3*CS+14,time:95,reward:1100,wantedOnStart:1,
-    briefing:'"Un gang rival rackette les taximen au carrefour central. Utilise ton viseur laser 🎯 pour les neutraliser proprement."',
+    briefing:'"Un gang rival rackette les taximen au carrefour central. Utilise ton viseur laser et neutralise-les tous."',
     objective:'Élimine les 4 gangsters armés au carrefour central.'
   },
   {
@@ -170,7 +246,7 @@ const STORY_MISSIONS=[
     contactRole:'mama',contactShirt:0xe91e63,
     cx:4*CS+18,cz:3*CS+18,
     tx:7*CS+16,tz:3*CS+16,time:70,reward:1300,wantedOnStart:0,
-    briefing:'"J’ai une réunion diplomatique urgente à Bastos ! Fonce à travers les avenues et dépose-moi devant la résidence sécurisée."',
+    briefing:'"J’ai une réunion urgente à Bastos ! Fonce à travers les avenues et dépose-moi devant la résidence sécurisée."',
     objective:'Rejoins la résidence VIP de Bastos dans le temps imparti.'
   },
   {
@@ -190,80 +266,81 @@ const STORY_MISSIONS=[
     contactRole:'gang',contactShirt:0xdc2626,
     cx:2*CS+20,cz:4*CS+20,
     type:'combat',count:5,tx:6*CS+14,tz:5*CS+14,time:105,reward:2000,wantedOnStart:1,
-    briefing:'"Ils nous attendent près du Lac Municipal avec des renforts. Prends un gilet pare-balles à la boutique si besoin et nettoie la zone."',
+    briefing:'"Ils nous attendent près du Lac Municipal avec des renforts. Passe à l’Armurerie si besoin et nettoie la zone."',
     objective:'Neutralise les 5 hommes armés près du Lac Municipal.'
   },
   {
     chapter:'CHAPITRE 7 · CONVOI EXPRÈS',
     title:'Traversée Nocturne',
     speaker:'Le Patron · Caïd du Boulevard',
-    contactRole:'vip',contactShirt:0xfacc15,
+    contactRole:'vip',contactShirt:0xeab308,
     cx:6*CS+14,cz:5*CS+10,
     tx:7*CS+18,tz:7*CS+18,time:75,reward:2400,wantedOnStart:2,
-    briefing:'"Dernière ligne droite vers Mvog-Mbi Est. La police a déployé des barrages : garde le pied sur l’accélérateur !"',
+    briefing:'"Dernière ligne droite vers Mvog-Mbi Est. La police a déployé des barrages : garde le pied sur l’accélérateur."',
     objective:'Rejoins la planque de Mvog-Mbi Est.'
   },
   {
     chapter:'CHAPITRE 8 · LE GRAND COUP',
     title:'Le Braquage de Yaoundé',
     speaker:'Le Patron · Caïd du Boulevard',
-    contactRole:'vip',contactShirt:0xfacc15,
+    contactRole:'vip',contactShirt:0xeab308,
     cx:7*CS+14,cz:7*CS+14,
     tx:3*CS+18,tz:3*CS+12,time:90,reward:3500,wantedOnStart:3,
-    briefing:'"Les coffres sont pleins ! Toute la police de la ville est à nos trousses : ramène le butin à notre base du Centre-Ville !"',
+    briefing:'"Les coffres sont pleins ! Toute la police est à nos trousses : ramène le butin à notre base du Centre-Ville !"',
     objective:'Ramène le butin à ta base sous alerte 3 étoiles.'
   }
 ];
 
 const NPC_PROFILES=[
-  {role:'taximan',name:'Moussa · Taximan Jaune (IA)',shirt:0xfacc15,skin:0x6f4e37,
+  {role:'taximan',name:'Moussa · Taximan Jaune',shirt:0xfacc15,skin:0x6f4e37,
    getReply:(ctx)=>{
-     if(ctx.stars>0)return 'Chef, cache-toi vite ! La police a ton signalement sur tout le boulevard !';
-     if(ctx.inCar&&ctx.carType==='taxi')return 'Ah mon collègue ! Le jaune brille ce soir, bonne course !';
+     if(ctx.stars>0)return 'Cache-toi vite, la police a ton signalement sur tout le boulevard !';
+     if(ctx.inCar&&ctx.carType==='taxi')return 'Le jaune brille ce soir collègue, bonne course !';
      if(ctx.isNight)return 'La nuit à Yaoundé, allume bien tes phares et méfie-toi des carrefours.';
-     return 'Bienvenue chef ! Rejoins l’anneau doré M pour parler au contact de mission.';
+     return 'Rejoins le point doré M pour rencontrer ton contact de mission.';
    }},
-  {role:'benskin',name:'Kevin · Pilote Benskin (IA)',shirt:0xf97316,skin:0x5c3c24,
+  {role:'benskin',name:'Kevin · Pilote Benskin',shirt:0xf97316,skin:0x5c3c24,
    getReply:(ctx)=>{
-     if(ctx.hp<50)return 'Tu es blessé frère ! Va vite manger un Ndolé à la boutique bleue sur la carte.';
-     if(ctx.inCar&&ctx.carType==='moto')return 'Belle moto ! Rien ne peut te bloquer dans les embouteillages avec ça.';
-     return 'Touche le radar en haut à gauche pour voir toute la carte structurée de Yaoundé !';
+     if(ctx.hp<50)return 'Tu es blessé ! Passe au Restaurant Le Mboa pour reprendre des forces.';
+     if(ctx.inCar&&ctx.carType==='moto')return 'Belle moto ! Rien ne te bloque dans les embouteillages avec ça.';
+     return 'Touche la mini-carte en haut à gauche pour ouvrir la carte complète de la ville.';
    }},
-  {role:'mama',name:'Maman Pauline · Bayam-Sellam (IA)',shirt:0xec4899,skin:0x7b5438,
+  {role:'mama',name:'Maman Pauline · Commerçante',shirt:0xec4899,skin:0x7b5438,
    getReply:(ctx)=>{
-     if(ctx.stars>=2)return 'Seigneur ! Rends-toi au commissariat ou paie un arrangement à la boutique !';
-     if(ctx.isNight)return 'Mon fils, les lampadaires sont allumés, rentre prudemment ce soir.';
-     return 'Que Dieu bénisse ta route mon enfant ! Les maisons avec le halo vert sont visitables.';
+     if(ctx.stars>=2)return 'Paie un effacement de casier à l’armurerie avant que le BIR n’arrive !';
+     if(ctx.isNight)return 'Les lampadaires sont allumés, rentre prudemment ce soir.';
+     return 'Tu peux entrer dans les villas, la salle de sport, le restaurant et l’armurerie.';
    }},
-  {role:'student',name:'Brice · Étudiant Ngoa-Ekellé (IA)',shirt:0x3b82f6,skin:0x8d5524,
+  {role:'student',name:'Brice · Étudiant Ngoa-Ekellé',shirt:0x3b82f6,skin:0x8d5524,
    getReply:(ctx)=>{
-     if(ctx.cash>=1000)return `Tu as déjà ${ctx.cash} FCFA ! Va acheter l'AK-47 à l'armurerie !`;
-     return 'Astuce : la balle part toujours exactement là où pointe le réticule central !';
+     if(ctx.cash>=750)return `Avec ${ctx.cash} FCFA, tu peux t'offrir le Fusil à Pompe ou l'AK-47 à l'armurerie !`;
+     return 'Pense à recharger ton chargeur avec R avant d’engager un combat.';
    }}
 ];
 
 // ===== ÉTAT DU JEU & OBJETS GPS
-let S='menu',inside=0,ret={x:0,z:0},tm=0,dayTime=14.0,cars=[],peds=[],enemies=[],copsOnFoot=[],bullets=[],trs=[],stars=0,wT=0,msgT=0,dT=0,cid=0,cy=0,cp=0.36,zs=0,bubbleT=0;
+let S='menu',interiorType=null,ret={x:0,z:0},tm=0,dayTime=14.0,cars=[],peds=[],enemies=[],copsOnFoot=[],bullets=[],trs=[],stars=0,wT=0,msgT=0,dT=0,cid=0,cy=0,cp=0.36,zs=0,bubbleT=0;
 let customWaypoint=null;
-const P={x:3*CS+18,z:3*CS+12,h:0,vy:0,y:0,hp:100,armor:50,stamina:100,car:null,cash:500,cd:0,inv:0,wk:0,enteringCar:null,m:buildHuman(0xff4081,0x7b5438,'player')};
+const P={
+  x:3*CS+18,z:3*CS+12,h:0,vy:0,y:0,hp:100,armor:50,stamina:100,car:null,cash:650,
+  cd:0,inv:0,wk:0,enteringCar:null,reloadTimer:0,punchTimer:0,bagSwing:0,
+  m:buildHuman(0xe11d48,0x7b5438,'player')
+};
 
-// Balise destination 3D
 const beacon=new THREE.Group();
-const bRing=new THREE.Mesh(new THREE.CylinderGeometry(2.8,2.8,0.35,24,1,true),new THREE.MeshBasicMaterial({color:0xffd54f,side:THREE.DoubleSide,transparent:true,opacity:0.88}));
+const bRing=new THREE.Mesh(new THREE.CylinderGeometry(2.8,2.8,0.35,24,1,true),new THREE.MeshBasicMaterial({color:0xeab308,side:THREE.DoubleSide,transparent:true,opacity:0.88}));
 bRing.position.y=0.2;beacon.add(bRing);
-const bBeam=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,24,12),new THREE.MeshBasicMaterial({color:0xffd54f,transparent:true,opacity:0.22}));
+const bBeam=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,24,12),new THREE.MeshBasicMaterial({color:0xeab308,transparent:true,opacity:0.2}));
 bBeam.position.y=12;beacon.add(bBeam);
 scene.add(beacon);
 
-// Flèche GPS fine, élégante, couleur unique dorée, placée bien au-dessus de la tête
 const gpsArrow=new THREE.Group();
-const arrowHead=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.42,4),new THREE.MeshBasicMaterial({color:0xffd54f}));
-arrowHead.rotation.x=PI/2;arrowHead.position.z=0.22;gpsArrow.add(arrowHead);
-const arrowShaft=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.05,0.32),new THREE.MeshBasicMaterial({color:0xffd54f}));
-arrowShaft.position.z=-0.12;gpsArrow.add(arrowShaft);
+const arrowHead=new THREE.Mesh(new THREE.ConeGeometry(0.15,0.40,4),new THREE.MeshBasicMaterial({color:0xeab308}));
+arrowHead.rotation.x=PI/2;arrowHead.position.z=0.21;gpsArrow.add(arrowHead);
+const arrowShaft=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.04,0.30),new THREE.MeshBasicMaterial({color:0xeab308}));
+arrowShaft.position.z=-0.11;gpsArrow.add(arrowShaft);
 scene.add(gpsArrow);
 
-// État des missions : 'approach_contact' -> 'briefing' -> 'active'
 let missionPhase='approach_contact',activeMission=null,missionTimeLeft=0,enemiesLeft=0,contactNPC=null,cutsceneTime=0;
 
 function clearContactNPC(){
@@ -277,13 +354,12 @@ function prepareNextMission(){
   if(m){
     activeMission=Object.assign({},m);
     missionPhase='approach_contact';
-    const gy=getGroundY(m.cx,m.cz,false);
+    const gy=getGroundY(m.cx,m.cz,null);
     const cm=buildHuman(m.contactShirt,0x6f4e37,m.contactRole);
     cm.position.set(m.cx,gy,m.cz);
     contactNPC={m:cm,x:m.cx,z:m.cz,y:gy,h:0};
     updateMissionCardUI();
   }else{
-    // Mode libre après la fin de l'histoire
     const gx=cl((Math.floor(P.x/CS)+(R()<0.5?1:-1)*2),1,NB-2)*CS+12;
     const gz=cl((Math.floor(P.z/CS)+(R()<0.5?1:-1)*2),1,NB-2)*CS+12;
     activeMission={chapter:'MODE LIBRE',title:'Course Express Yaoundé',tx:gx,tz:gz,time:60,reward:450,objective:'Rejoins la destination indiquée par le GPS.'};
@@ -307,11 +383,11 @@ function triggerMissionBriefing(){
     contactNPC.h=Math.atan2(P.x-contactNPC.x,P.z-contactNPC.z);
   }
   $('brief-chapter').textContent=activeMission.chapter;
-  $('brief-reward').textContent=`💰 +${activeMission.reward} FCFA`;
+  $('brief-reward').textContent=`+${activeMission.reward} FCFA`;
   $('brief-title').textContent=activeMission.title;
-  $('brief-speaker').textContent=`🗣️ ${activeMission.speaker}`;
+  $('brief-speaker').textContent=activeMission.speaker;
   $('brief-text').textContent=activeMission.briefing;
-  $('brief-obj').textContent=`🎯 ${activeMission.objective}`;
+  $('brief-obj').textContent=`Objectif : ${activeMission.objective}`;
   $('briefing-modal').style.display='flex';
   playTone(540,0.2,'sine');
 }
@@ -333,7 +409,7 @@ function acceptBriefingMission(){
     }
   }
   updateMissionCardUI();
-  showToast(`🎬 Mission lancée : ${activeMission.title}`);
+  showToast(`Mission lancée : ${activeMission.title}`);
   playTone(720,0.25,'sine');
 }
 
@@ -342,7 +418,6 @@ function declineBriefingMission(){
   document.body.classList.remove('cutscene');
   S='play';
   missionPhase='approach_contact';
-  // Éloigne légèrement le joueur pour ne pas redéclencher immédiatement
   P.x-=Math.sin(P.h)*4.5;P.z-=Math.cos(P.h)*4.5;
 }
 
@@ -360,10 +435,10 @@ function updateMissionCardUI(){
   if(!activeMission)return;
   const isContact=missionPhase==='approach_contact';
   $('mc-badge').textContent=isContact?'CONTACT MISSION (M)':activeMission.chapter;
-  $('mc-timer').textContent=isContact?'EN ATTENTE':`⏱ ${Math.max(0,Math.ceil(missionTimeLeft))}s`;
+  $('mc-timer').textContent=isContact?'EN ATTENTE':`${Math.max(0,Math.ceil(missionTimeLeft))}s`;
   $('mc-title').textContent=activeMission.title;
-  $('mc-desc').textContent=isContact?`Rejoins ${activeMission.speaker} au point doré M.`:activeMission.objective;
-  $('mc-reward').textContent=`💰 +${activeMission.reward} FCFA`;
+  $('mc-desc').textContent=isContact?`Rejoins ${activeMission.speaker} au repère doré M.`:activeMission.objective;
+  $('mc-reward').textContent=`+${activeMission.reward} FCFA`;
 }
 
 function showToast(txt){const el=$('toast');el.textContent=txt;el.classList.add('show');msgT=3.2;}
@@ -376,7 +451,7 @@ function updateControlUI(){
   $('controls-car').style.display=P.car?'block':'none';
 }
 
-// ===== GRANDE CARTE STRUCTURÉE DE YAOUNDÉ
+// ===== GRANDE CARTE DE YAOUNDÉ
 let prevStateBeforeMap='play';
 window.openBigMap=function(){
   if(S!=='play')return;
@@ -388,7 +463,7 @@ window.closeBigMap=function(){
   if(S==='map'){S=prevStateBeforeMap;$('big-map-modal').style.display='none';}
 };
 window.clearCustomWaypoint=function(){
-  customWaypoint=null;drawBigMap();showToast('Repère GPS personnalisé effacé');
+  customWaypoint=null;drawBigMap();showToast('Repère GPS effacé');
 };
 $('big-map').addEventListener('pointerdown',e=>{
   const rect=$('big-map').getBoundingClientRect();
@@ -396,45 +471,37 @@ $('big-map').addEventListener('pointerdown',e=>{
   const wz=((e.clientY-rect.top)/rect.height)*WS;
   customWaypoint={x:cl(wx,10,WS-10),z:cl(wz,10,WS-10)};
   const dist=Math.round(Math.hypot(customWaypoint.x-P.x,customWaypoint.z-P.z));
-  $('map-cursor-info').textContent=`📍 Repère GPS actif · Distance : ${dist} mètres`;
+  $('map-cursor-info').textContent=`Repère GPS actif · Distance : ${dist} mètres`;
   playTone(680,0.15,'sine');
   drawBigMap();
-  showToast(`📍 Repère GPS placé (${dist}m)`);
+  showToast(`Repère GPS placé (${dist} m)`);
 });
 
 function drawBigMap(){
   const cv=$('big-map'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,S2=W/WS;
-  ctx.fillStyle='#0b1220';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0b101b';ctx.fillRect(0,0,W,H);
 
-  // Zones territoriales & quartiers colorés de Yaoundé
   const zones=[
-    {x:0,z:0,w:4*CS,h:4*CS,col:'rgba(30,58,138,0.28)',name:'QUARTIER TSINGA'},
-    {x:4*CS,z:0,w:6*CS,h:4*CS,col:'rgba(6,95,70,0.28)',name:'QUARTIER BASTOS'},
-    {x:0,z:4*CS,w:4*CS,h:6*CS,col:'rgba(120,53,15,0.26)',name:'NGOA-EKELLÉ · UNIVERSITÉ'},
-    {x:4*CS,z:4*CS,w:6*CS,h:6*CS,col:'rgba(88,28,135,0.24)',name:'MVOG-MBI · CENTRE SUD'}
+    {x:0,z:0,w:4*CS,h:4*CS,col:'rgba(30,58,138,0.26)',name:'QUARTIER TSINGA'},
+    {x:4*CS,z:0,w:6*CS,h:4*CS,col:'rgba(6,95,70,0.26)',name:'QUARTIER BASTOS'},
+    {x:0,z:4*CS,w:4*CS,h:6*CS,col:'rgba(120,53,15,0.24)',name:'NGOA-EKELLÉ · UNIVERSITÉ'},
+    {x:4*CS,z:4*CS,w:6*CS,h:6*CS,col:'rgba(88,28,135,0.22)',name:'MVOG-MBI · CENTRE SUD'}
   ];
   for(const z of zones){
     ctx.fillStyle=z.col;
     ctx.fillRect(z.x*S2,z.z*S2,z.w*S2,z.h*S2);
   }
 
-  // Blocs urbains
-  ctx.fillStyle='#162136';
+  ctx.fillStyle='#151e2e';
   for(let cx=0;cx<NB;cx++)for(let cz=0;cz<NB;cz++){
     ctx.fillRect(cx*CS*S2+4,cz*CS*S2+4,CS*S2-8,CS*S2-8);
   }
 
-  // Lac Municipal & Fleuve Mfoundi
   ctx.fillStyle='#0284c7';
   ctx.beginPath();ctx.arc(LAKE_X*S2,LAKE_Z*S2,24*S2,0,PI*2);ctx.fill();
   ctx.strokeStyle='#0284c7';ctx.lineWidth=7;
   ctx.beginPath();ctx.moveTo(LAKE_X*S2,0);ctx.lineTo(LAKE_X*S2,H);ctx.stroke();
 
-  // Parc Bois Sainte-Anastasie
-  ctx.fillStyle='#15803d';
-  ctx.fillRect((3*CS+12)*S2,(4*CS+12)*S2,56*S2,56*S2);
-
-  // Réseau routier structuré (Avenues principales & rues secondaires)
   for(let i=0;i<=NB;i++){
     const p=i*CS*S2;
     const isMain=(i===3||i===4||i===7);
@@ -444,93 +511,126 @@ function drawBigMap(){
     ctx.beginPath();ctx.moveTo(0,p);ctx.lineTo(W,p);ctx.stroke();
   }
 
-  // Noms officiels des quartiers, avenues et lieux stratégiques
   ctx.textAlign='center';
   for(const z of zones){
-    ctx.fillStyle='rgba(255,255,255,0.22)';ctx.font='900 12px sans-serif';
+    ctx.fillStyle='rgba(255,255,255,0.22)';ctx.font='800 12px sans-serif';
     ctx.fillText(z.name,(z.x+z.w/2)*S2,(z.z+z.h/2)*S2);
   }
   ctx.fillStyle='#f8fafc';ctx.font='bold 10px sans-serif';
   ctx.fillText('BOULEVARD DU 20 MAI',2.2*CS*S2,3*CS*S2-6);
   ctx.fillText('AVENUE KENNEDY',5.5*CS*S2,4*CS*S2-6);
-  ctx.fillText('🏛️ MONUMENT RÉUNIFICATION',MON_X*S2,MON_Z*S2-11);
-  ctx.fillText('💧 LAC MUNICIPAL',LAKE_X*S2,LAKE_Z*S2+24);
-  ctx.fillText('🌳 BOIS STE-ANASTASIE',(3.5*CS)*S2,(4.5*CS)*S2);
+  ctx.fillText('MONUMENT RÉUNIFICATION',MON_X*S2,MON_Z*S2-11);
+  ctx.fillText('LAC MUNICIPAL',LAKE_X*S2,LAKE_Z*S2+24);
 
-  // Maisons visitables autour du joueur
-  ctx.fillStyle='#2dd4bf';
   for(const d of enterableDoors){
-    ctx.fillRect(d.x*S2-3,d.z*S2-3,6,6);
+    ctx.fillStyle=d.type==='armory'?'#38bdf8':d.type==='gym'?'#a855f7':d.type==='restaurant'?'#f97316':'#14b8a6';
+    ctx.fillRect(d.x*S2-3.5,d.z*S2-3.5,7,7);
   }
 
-  // Boutique & Station-Service
-  ctx.fillStyle='#38bdf8';ctx.beginPath();ctx.arc(SHOP_X*S2,SHOP_Z*S2,6.5,0,PI*2);ctx.fill();
-  ctx.fillStyle='#fb923c';ctx.beginPath();ctx.arc(GAS_X*S2,GAS_Z*S2,6.5,0,PI*2);ctx.fill();
+  ctx.fillStyle='#fb923c';ctx.beginPath();ctx.arc(GAS_X*S2,GAS_Z*S2,6,0,PI*2);ctx.fill();
 
-  // Police
   for(const c of cars)if(c.kind==='cop'){
-    ctx.fillStyle='#2979ff';ctx.beginPath();ctx.arc(c.x*S2,c.z*S2,5,0,PI*2);ctx.fill();
+    ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(c.x*S2,c.z*S2,5,0,PI*2);ctx.fill();
   }
 
-  // Traçabilité GPS
   const tgt=getActiveTarget();
   if(tgt){
     ctx.save();
-    ctx.strokeStyle=tgt.isCustom?'#00e676':'#ffd54f';
-    ctx.lineWidth=3.5;ctx.setLineDash([8,5]);
+    ctx.strokeStyle=tgt.isCustom?'#22c55e':'#eab308';
+    ctx.lineWidth=3;ctx.setLineDash([8,5]);
     ctx.beginPath();ctx.moveTo(P.x*S2,P.z*S2);ctx.lineTo(tgt.tx*S2,tgt.tz*S2);ctx.stroke();
     ctx.restore();
 
-    ctx.fillStyle=tgt.isCustom?'#00e676':'#ffd54f';
+    ctx.fillStyle=tgt.isCustom?'#22c55e':'#eab308';
     ctx.beginPath();ctx.arc(tgt.tx*S2,tgt.tz*S2,8.5,0,PI*2);ctx.fill();
     ctx.fillStyle='#000';ctx.font='900 10px sans-serif';
     ctx.fillText(tgt.isCustom?'GPS':tgt.isContact?'M':'★',tgt.tx*S2,tgt.tz*S2+3.5);
   }
 
-  // Position du joueur
   ctx.save();
   ctx.translate(P.x*S2,P.z*S2);
   ctx.rotate(-cy);
-  ctx.fillStyle='rgba(255,64,129,0.3)';
+  ctx.fillStyle='rgba(239,68,68,0.28)';
   ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-15,26);ctx.lineTo(15,26);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#ff4081';ctx.beginPath();ctx.arc(0,0,6.5,0,PI*2);ctx.fill();
+  ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(0,0,6.5,0,PI*2);ctx.fill();
   ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
   ctx.restore();
 }
 
-// ===== BOUTIQUE & ARMURERIE
+// ===== ARMURERIE & RECHARGEMENT D'ARMES
 function openShop(){S='shop';$('shop-modal').style.display='flex';}
 function closeShop(){S='play';$('shop-modal').style.display='none';}
 window.buyItem=function(id){
   initAudio();
-  if(id==='heal'&&P.cash>=150){P.cash-=150;P.hp=100;showToast('🍲 Ndolé dégusté ! Santé à 100%');playTone(660,0.25,'sine');}
-  else if(id==='armor'&&P.cash>=300){P.cash-=300;P.armor=100;showToast('🦺 Gilet pare-balles équipé !');playTone(580,0.25,'sine');}
-  else if(id==='smg'&&P.cash>=600){
-    P.cash-=600;if(!SAVE.weapons.includes('smg'))SAVE.weapons.push('smg');
-    SAVE.curWeapon='smg';updateWeaponHUD();showToast('🔥 Mitraillette Uzi débloquée !');playTone(780,0.3,'sawtooth');
-  }else if(id==='rifle'&&P.cash>=1200){
-    P.cash-=1200;if(!SAVE.weapons.includes('rifle'))SAVE.weapons.push('rifle');
-    SAVE.curWeapon='rifle';updateWeaponHUD();showToast('🎯 Fusil AK-47 débloqué !');playTone(840,0.35,'sawtooth');
-  }else if(id==='clear'&&P.cash>=400){P.cash-=400;stars=0;clearCopsOnFoot();showToast('🕶️ Dossier classé ! 0 étoile.');playTone(520,0.3,'sine');}
-  else if(id==='repair'&&P.cash>=200){
-    const targetCar=P.car||cars.find(c=>Math.hypot(c.x-P.x,c.z-P.z)<8);
-    if(!targetCar){showToast('❌ Approche un véhicule à réparer !');return;}
-    P.cash-=200;targetCar.hp=targetCar.maxHp;showToast('🔧 Véhicule remis à neuf à 100% !');playTone(700,0.25,'sine');
-  }else{showToast('❌ Pas assez de FCFA !');playTone(160,0.2,'sawtooth');return;}
+  if(id==='heal'&&P.cash>=150){P.cash-=150;P.hp=100;showToast('Santé restaurée à 100%');playTone(660,0.25,'sine');}
+  else if(id==='armor'&&P.cash>=300){P.cash-=300;P.armor=100;showToast('Gilet pare-balles Kevlar équipé');playTone(580,0.25,'sine');}
+  else if(id==='ammo'&&P.cash>=150){
+    P.cash-=150;
+    SAVE.reserve.smg+=120;SAVE.reserve.shotgun+=32;SAVE.reserve.rifle+=120;SAVE.reserve.sniper+=20;
+    updateWeaponHUD();showToast('Caisse de munitions récupérée');playReloadSound();
+  }else if(id==='clear'&&P.cash>=400){P.cash-=400;stars=0;clearCopsOnFoot();showToast('Casier judiciaire effacé');playTone(520,0.3,'sine');}
+  else if(WEAPONS[id]){
+    const prices={smg:450,shotgun:750,rifle:1100,sniper:1600};
+    const cost=prices[id];
+    if(P.cash<cost){showToast('Fonds insuffisants');playTone(160,0.2,'sawtooth');return;}
+    P.cash-=cost;
+    if(!SAVE.weapons.includes(id))SAVE.weapons.push(id);
+    SAVE.curWeapon=id;
+    SAVE.mag[id]=WEAPONS[id].magSize;
+    SAVE.reserve[id]=(SAVE.reserve[id]||0)+WEAPONS[id].magSize*3;
+    updateWeaponHUD();showToast(`${WEAPONS[id].name} acquis et équipé`);playReloadSound();
+  }else{showToast('Fonds insuffisants');playTone(160,0.2,'sawtooth');return;}
   writeSave();
 };
+
 window.switchWeapon=function(){
-  if(SAVE.weapons.length<2){showToast('Débloque de nouvelles armes à la boutique !');return;}
+  if(SAVE.weapons.length<2){showToast('Aucune autre arme débloquée');return;}
+  P.reloadTimer=0;
   const idx=(SAVE.weapons.indexOf(SAVE.curWeapon)+1)%SAVE.weapons.length;
   SAVE.curWeapon=SAVE.weapons[idx];
   updateWeaponHUD();
-  const names={pistol:'🔫 Pistolet 9mm ↻',smg:'🔥 Mitraillette Uzi ↻',rifle:'🎯 Fusil AK-47 ↻'};
-  showToast('Arme équipée : '+names[SAVE.curWeapon]);
+  showToast(`Arme : ${WEAPONS[SAVE.curWeapon].name}`);
 };
+
+function reloadWeapon(){
+  const id=SAVE.curWeapon,w=WEAPONS[id];
+  if(P.reloadTimer>0)return;
+  const cur=SAVE.mag[id]||0;
+  if(cur>=w.magSize)return;
+  if(!w.infiniteReserve&&(SAVE.reserve[id]||0)<=0){
+    showToast('Plus de munitions en réserve ! Passe à l’Armurerie.');
+    playTone(180,0.12,'square');
+    return;
+  }
+  P.reloadTimer=1.1;
+  playReloadSound();
+  updateWeaponHUD();
+}
+
+function finishReload(){
+  const id=SAVE.curWeapon,w=WEAPONS[id];
+  const need=w.magSize-(SAVE.mag[id]||0);
+  if(w.infiniteReserve){
+    SAVE.mag[id]=w.magSize;
+  }else{
+    const take=Math.min(need,SAVE.reserve[id]||0);
+    SAVE.mag[id]=(SAVE.mag[id]||0)+take;
+    SAVE.reserve[id]-=take;
+  }
+  updateWeaponHUD();
+}
+
 function updateWeaponHUD(){
-  const names={pistol:'🔫 Pistolet 9mm ↻',smg:'🔥 Mitraillette Uzi ↻',rifle:'🎯 Fusil AK-47 ↻'};
-  $('weapon-info').textContent=names[SAVE.curWeapon]||'🔫 Pistolet 9mm ↻';
-  P.m.userData.gun.visible=!P.car;
+  const id=SAVE.curWeapon,w=WEAPONS[id];
+  $('weapon-name').textContent=w.name;
+  if(P.reloadTimer>0){
+    $('ammo-count').textContent='RECHARGEMENT...';
+  }else{
+    const cur=SAVE.mag[id]||0;
+    const res=w.infiniteReserve?'∞':(SAVE.reserve[id]||0);
+    $('ammo-count').textContent=`${cur} / ${res}`;
+  }
+  P.m.userData.gun.visible=!P.car&&P.punchTimer<=0;
 }
 
 // ===== ENTRÉES CLAVIER & TACTILE
@@ -540,9 +640,10 @@ let runTapTime=0;
 addEventListener('keydown',e=>{
   KB[e.code]=1;
   if(e.code==='KeyE'||e.code==='Enter'){if(S==='cutscene')acceptBriefingMission();else doSmartAction();}
+  if(e.code==='KeyR')reloadWeapon();
   if(e.code==='KeyM'){if(S==='map')closeBigMap();else openBigMap();}
   if(e.code==='Tab'){e.preventDefault();switchWeapon();}
-  if(e.code==='KeyR')cycleRadio();
+  if(e.code==='KeyT')cycleRadio();
   if(e.code==='KeyH'&&P.car)playHorn();
   if(e.code==='KeyC'&&!P.car)doJump();
   if(e.code==='Escape'||e.code==='KeyP'){if(S==='map')closeBigMap();else togglePause();}
@@ -555,7 +656,7 @@ addEventListener('contextmenu',e=>e.preventDefault());
 
 function cycleRadio(){
   initAudio();radioIdx=(radioIdx+1)%RADIOS.length;
-  showToast('📻 '+RADIOS[radioIdx].name);
+  showToast('Station : '+RADIOS[radioIdx].name);
 }
 function doJump(){
   if(!P.car&&P.y<=0.01&&S==='play'&&!P.enteringCar){P.vy=6.8;playTone(300,0.12,'sine',0.03,450);}
@@ -577,7 +678,7 @@ function getInput(){
 const jz=$('jz'),jb=$('jb'),jk=$('jk'),lz=$('lz');let jid=null,jo=[0,0],lid=null,lp=[0,0];
 jz.onpointerdown=e=>{
   e.preventDefault();jid=e.pointerId;jz.setPointerCapture(e.pointerId);
-  jo=[e.clientX,e.clientY];jb.style.cssText='display:block;left:'+(jo[0]-56)+'px;top:'+(jo[1]-56)+'px';
+  jo=[e.clientX,e.clientY];jb.style.cssText='display:block;left:'+(jo[0]-55)+'px;top:'+(jo[1]-55)+'px';
   jv.m=1;jv.x=jv.y=0;jk.style.transform='none';
 };
 jz.onpointermove=e=>{
@@ -600,6 +701,7 @@ document.querySelectorAll('.tbtn').forEach(b=>{
   b.onpointerdown=e=>{
     e.preventDefault();b.setPointerCapture(e.pointerId);b.classList.add('on');
     if(k==='act')doSmartAction();
+    else if(k==='reload')reloadWeapon();
     else if(k==='run'){B.run=1;runTapTime=performance.now();}
     else B[k]=1;
   };
@@ -614,7 +716,7 @@ document.querySelectorAll('.tbtn').forEach(b=>{
 $('btn-how').onclick=()=>{const h=$('how');h.style.display=h.style.display==='block'?'none':'block';};
 $('btn-pause').onclick=togglePause;
 $('btn-radio').onclick=cycleRadio;
-$('btn-reset').onclick=()=>{localStorage.removeItem(SAVE_KEY);SAVE=defaultSave();updateSaveUI();showToast('🗑️ Sauvegarde réinitialisée !');};
+$('btn-reset').onclick=()=>{localStorage.removeItem(SAVE_KEY);SAVE=defaultSave();updateSaveUI();showToast('Nouvelle partie prête');};
 $('btn-play').onclick=()=>{
   initAudio();
   if(S==='pause'){S='play';$('menu').style.display='none';return;}
@@ -625,25 +727,42 @@ $('btn-play').onclick=()=>{
   startGame();
 };
 function togglePause(){
-  if(S==='play'){S='pause';$('btn-play').textContent='▶ REPRENDRE';$('menu').style.display='flex';writeSave();}
+  if(S==='play'){S='pause';$('btn-play').textContent='REPRENDRE';$('menu').style.display='flex';writeSave();}
   else if(S==='pause'){S='play';$('menu').style.display='none';}
 }
 
-// ===== VÉHICULES, PILOTES DE MOTOS, COLLISIONS SOLIDES & CARJACKING ANIMÉ
+// ===== BRIS DE VITRES (VOITURES & BÂTIMENTS)
+function spawnGlassShards(wx,wy,wz,count=10){
+  playGlassShatter();
+  for(let k=0;k<count;k++){
+    const sh=bx(0.14,0.14,0.03,0xbae6fd,wx+rn(-0.5,0.5),wy+rn(-0.3,0.4),wz+rn(-0.5,0.5));
+    trs.push({m:sh,t:0.65,vy:rn(1.5,4.2),vx:rn(-2.5,2.5),vz:rn(-2.5,2.5)});
+  }
+}
+
+function shatterCarWindows(c){
+  if(c.windowsBroken||!c.m.userData.windows||!c.m.userData.windows.length)return;
+  c.windowsBroken=true;
+  spawnGlassShards(c.x,1.4,c.z,14);
+  for(const w of c.m.userData.windows){
+    w.visible=false;
+  }
+}
+
+// ===== VÉHICULES, COLLISIONS SOLIDES & CARJACKING ANIMÉ
 const HD=[PI/2,0,-PI/2,PI];
 function spawnVehicle(kind,x,z,d){
   let vType='civ',col=0xffffff;
   if(kind==='cop'){vType='cop';col=0xf8fafc;}
-  else if(kind==='me'){vType='vip';col=0xff4081;}
+  else if(kind==='me'){vType='vip';col=0xe11d48;}
   else{
     const r=R();
     if(r<0.44){vType='taxi';col=0xfacc15;}
     else if(r<0.64){vType='moto';col=0xdc2626;}
-    else{vType='civ';col=[0x2563eb,0xdc2626,0x16a34a,0xf8fafc,0x7c3aed,0xea580c][R()*6|0];}
+    else{vType='civ';col=[0x2563eb,0xdc2626,0x16a34a,0xf8fafc,0x475569,0xea580c][R()*6|0];}
   }
   const maxHp=kind==='cop'?150:vType==='moto'?60:vType==='vip'?160:120;
   const m=buildVehicle(col,vType);
-  // Ajouter un vrai pilote assis sur les motos en circulation !
   let riderMesh=null;
   if(vType==='moto'&&kind!=='me'){
     riderMesh=buildHuman(0xf97316,0x6f4e37,'benskin');
@@ -656,7 +775,8 @@ function spawnVehicle(kind,x,z,d){
   }
   const c={
     m,x,z,h:HD[d],v:0,d,kind,vType,hasDriver:(kind!=='me'),riderMesh,
-    hp:maxHp,maxHp,id:++cid,turned:0,rev:0,st:0,bt:0,deployed:0,smokeT:0,revLock:0
+    hp:maxHp,maxHp,id:++cid,turned:0,rev:0,st:0,bt:0,deployed:0,smokeT:0,revLock:0,
+    wheelSpin:0,steerAngle:0,windowsBroken:false
   };
   cars.push(c);return c;
 }
@@ -689,7 +809,6 @@ function getAgentReply(npc){
   });
 }
 
-// Collision physique stricte : empêche totalement de traverser les voitures !
 function resolvePersonCarCollisions(person,rad=0.68,ignoreCar=null){
   for(const c of cars){
     if(c===P.car||c===ignoreCar)continue;
@@ -711,7 +830,6 @@ function resolvePersonCarCollisions(person,rad=0.68,ignoreCar=null){
   }
 }
 
-// Animation d'ouverture de porte & extraction du conducteur (Carjacking)
 function startEnterCarAnimation(c){
   if(P.enteringCar||P.car)return;
   c.v=0;
@@ -724,7 +842,6 @@ function updateEnterCarAnimation(dt){
   const c=ec.car;
   if(!c||c.dead){P.enteringCar=null;return;}
   c.v=0;
-  // Position de la poignée conducteur (côté gauche du véhicule)
   const doorOffset=c.vType==='moto'?-1.1:-1.62;
   const tx=c.x+Math.cos(c.h)*doorOffset;
   const tz=c.z-Math.sin(c.h)*doorOffset;
@@ -743,11 +860,7 @@ function updateEnterCarAnimation(dt){
     }
   }else if(ec.phase==='open'){
     ec.timer+=dt;
-    // Ouverture fluide de la portière conducteur
-    if(c.m.userData.doorL){
-      c.m.userData.doorL.rotation.y=-Math.min(1.15,ec.timer*3.6);
-    }
-    // Extraction du conducteur PNJ hors du véhicule !
+    if(c.m.userData.doorL)c.m.userData.doorL.rotation.y=-Math.min(1.15,ec.timer*3.6);
     if(c.hasDriver&&!ec.pulled&&ec.timer>0.18){
       ec.pulled=true;c.hasDriver=false;
       if(c.riderMesh){c.m.remove(c.riderMesh);c.riderMesh=null;}
@@ -757,18 +870,14 @@ function updateEnterCarAnimation(dt){
       peds.push({m:dm,x:ex,z:ez,h:c.h-PI/2,t:5,fl:6,dead:0,wk:0,hp:35,profile:prof,chatCd:5});
       addCrime(c.kind==='cop'?2:1);
       playTone(240,0.18,'sawtooth');
-      showToast(c.vType==='moto'?'🏍️ Pilote délogé ! Moto prise !':'🚗 Conducteur extrait du véhicule !');
+      showToast(c.vType==='moto'?'Pilote délogé · Moto prise':'Conducteur extrait du véhicule');
     }
-    if(ec.timer>=0.52){
-      ec.phase='board';ec.timer=0;
-    }
+    if(ec.timer>=0.52){ec.phase='board';ec.timer=0;}
   }else if(ec.phase==='board'){
     ec.timer+=dt;
     P.x+=(c.x-P.x)*Math.min(1,dt*10);
     P.z+=(c.z-P.z)*Math.min(1,dt*10);
-    if(c.m.userData.doorL){
-      c.m.userData.doorL.rotation.y=-Math.max(0,1.15*(1-ec.timer*4));
-    }
+    if(c.m.userData.doorL)c.m.userData.doorL.rotation.y=-Math.max(0,1.15*(1-ec.timer*4));
     if(ec.timer>=0.28){
       if(c.m.userData.doorL)c.m.userData.doorL.rotation.y=0;
       c.kind='me';c.revLock=0;
@@ -789,7 +898,7 @@ function deployCopsFromCar(c){
     cm.userData.gun.visible=true;
     copsOnFoot.push({m:cm,x:cx,z:cz,h:0,hp:isBir?70:45,cd:rn(0.5,1.3),wk:0,isBir});
   }
-  showToast(isBir?'🚨 Intervention d’élite BIR en cours !':'🚨 La police descend de véhicule et encercle la zone !');
+  showToast(isBir?'Intervention d’élite BIR en cours':'Patrouille de police déployée');
 }
 function clearCopsOnFoot(){
   for(const cp of copsOnFoot)scene.remove(cp.m);
@@ -827,31 +936,87 @@ function explodeCar(c){
   c.dead=1;scene.remove(c.m);
 }
 
-// ===== BOUTON D'ACTION INTELLIGENT UNIQUE
+// ===== INTERACTIONS INTELLIGENTES (PORTES, SAC DE FRAPPE, RESTAURANT, ARMURERIE, VÉHICULES)
+function enterInterior(type,doorObj){
+  interiorType=type;
+  ret={x:doorObj.x,z:doorObj.z+1.6};
+  const cfg=INTERIORS[type];
+  P.x=cfg.ix;P.z=cfg.iz+cfg.d/2-2.2;P.h=PI;cy=PI;
+  if(type==='villa'){roomCash.visible=true;roomMed.visible=true;}
+  const labels={
+    villa:'Villa résidentielle : récupère le cash et les soins.',
+    gym:'Salle de Sport : approche le sac de frappe pour t’entraîner.',
+    restaurant:'Restaurant Le Mboa : approche le comptoir pour commander.',
+    armory:'Armurerie Tactique : approche le comptoir pour t’équiper.'
+  };
+  showToast(labels[type]);
+}
+
 function doSmartAction(){
   if(S==='shop'){closeShop();return;}
   if(S!=='play'||P.enteringCar)return;
-  if(inside){
-    if(Math.hypot(P.x-IX,P.z-(IZ+7))<4.8){inside=0;P.x=ret.x;P.z=ret.z;streamChunks(1,P.x,P.z);}
+
+  // Interactions à l'intérieur d'un bâtiment
+  if(interiorType){
+    const cfg=INTERIORS[interiorType];
+    // Sortie par la porte
+    if(Math.hypot(P.x-cfg.ix,P.z-(cfg.iz+cfg.d/2-1.2))<3.2){
+      interiorType=null;P.x=ret.x;P.z=ret.z;streamChunks(1,P.x,P.z);return;
+    }
+    // Salle de sport : sac de frappe
+    if(interiorType==='gym'&&Math.hypot(P.x-(IX_GYM-2.5),P.z-(IZ_GYM-1.5))<2.8){
+      P.punchTimer=0.65;
+      P.bagSwing=1.2;
+      SAVE.maxStamina=Math.min(160,(SAVE.maxStamina||100)+5);
+      P.stamina=SAVE.maxStamina;
+      playTone(110,0.14,'sawtooth',0.08,45);
+      showToast(`Entraînement boxe · Endurance max : ${SAVE.maxStamina}`);
+      writeSave();return;
+    }
+    // Restaurant : commander un repas
+    if(interiorType==='restaurant'&&Math.hypot(P.x-IX_RESTO,P.z-(IZ_RESTO-3.2))<3.2){
+      if(P.cash>=150){
+        P.cash-=150;P.hp=100;P.stamina=SAVE.maxStamina||100;
+        showNpcBubble('Chef Nadine · Le Mboa','Bon appétit ! Ton Ndolé royal te remet à 100% de forme.',4);
+        playTone(620,0.25,'sine');writeSave();
+      }else showToast('Il te faut 150 FCFA pour commander un plat.');
+      return;
+    }
+    // Armurerie : ouvrir le catalogue
+    if(interiorType==='armory'&&Math.hypot(P.x-IX_ARMORY,P.z-(IZ_ARMORY-2.2))<3.2){
+      openShop();return;
+    }
+    // Parler aux PNJ présents dans la pièce
+    for(const npc of interiorNPCs){
+      if(npc.type===interiorType&&Math.hypot(P.x-npc.x,P.z-npc.z)<4.0){
+        npc.h=Math.atan2(P.x-npc.x,P.z-npc.z);
+        showNpcBubble(npc.name,npc.line,4.5);
+        playTone(520,0.12,'sine');return;
+      }
+    }
     return;
   }
+
+  // Sortir d'un véhicule
   if(P.car){
     const c=P.car,s=Math.sin(c.h),k=Math.cos(c.h);
     P.x=c.x-k*2.8;P.z=c.z+s*2.8;hitBuilding(P,0.6);
     P.car=null;c.v=0;c.kind='me';c.hasDriver=false;P.m.visible=true;updateWeaponHUD();updateControlUI();return;
   }
-  if(Math.hypot(P.x-SHOP_X,P.z-SHOP_Z)<4.8){openShop();return;}
+
+  // Entrer dans un véhicule proche
   const bestCar=findNearestCar(5.8);
   if(bestCar){
-    startEnterCarAnimation(bestCar);
-    return;
+    startEnterCarAnimation(bestCar);return;
   }
+
+  // Entrer dans un bâtiment (Villa, Gym, Restaurant, Armurerie)
   const d=nearDoor();
   if(d){
-    inside=1;ret={x:d.x,z:d.z+1.6};P.x=IX;P.z=IZ+5.5;P.h=PI;cy=PI;
-    roomCash.visible=true;roomMed.visible=true;
-    showToast('Maison visitée : récupère le cash et les soins !');return;
+    enterInterior(d.type||'villa',d);return;
   }
+
+  // Parler à un habitant dehors
   const npc=findNearestNPC(6.0);
   if(npc){
     npc.h=Math.atan2(P.x-npc.x,P.z-npc.z);npc.t=4;
@@ -861,20 +1026,18 @@ function doSmartAction(){
   }
 }
 
-// ===== SYSTÈME DE VISÉE RAYCAST 3D EXACT SUR LE VISEUR CENTRAL
+// ===== VISÉE RAYCAST 3D & BALISTIQUE MULTI-ARMES
 const raycaster=new THREE.Raycaster();
-const crosshairNDC=new THREE.Vector2(0,0.08); // Correspond exactement à left:50%, top:46%
+const crosshairNDC=new THREE.Vector2(0,0.08);
 
 function getCrosshairAimData(){
   raycaster.setFromCamera(crosshairNDC,cam);
   const ro=raycaster.ray.origin,rd=raycaster.ray.direction;
 
-  // Point par défaut loin devant le réticule (à 75m)
   let bestDist=75;
   let targetObj=null;
 
-  // Vérifier intersection avec les murs des bâtiments
-  if(!inside){
+  if(!interiorType){
     const hLen=Math.hypot(rd.x,rd.z);
     if(hLen>0.01){
       const wDist=rayWall(ro.x,ro.z,rd.x/hLen,rd.z/hLen,bestDist*hLen)/hLen;
@@ -882,14 +1045,13 @@ function getCrosshairAimData(){
     }
   }
 
-  // Vérifier intersection précise avec les voitures, policiers, ennemis et PNJ
   const candidates=cars.filter(c=>c!==P.car)
-    .concat(inside?[]:enemies.filter(e=>!e.dead))
-    .concat(inside?[]:copsOnFoot)
-    .concat(inside?[]:peds.filter(p=>!p.dead));
+    .concat(interiorType?[]:enemies.filter(e=>!e.dead))
+    .concat(interiorType?[]:copsOnFoot)
+    .concat(interiorType?[]:peds.filter(p=>!p.dead));
 
   for(const obj of candidates){
-    const gy=getGroundY(obj.x,obj.z,inside);
+    const gy=getGroundY(obj.x,obj.z,interiorType);
     const center=new THREE.Vector3(obj.x,gy+(obj.vType!==undefined?0.95:1.15),obj.z);
     const radius=obj.vType!==undefined?(obj.vType==='moto'?1.15:2.25):0.85;
     const toCenter=center.clone().sub(ro);
@@ -909,50 +1071,59 @@ function getCrosshairAimData(){
 
 function spawnBullet(ox,oy,oz,dirVec,speed,dmg,fromPlayer,col=0xfef08a){
   const g=new THREE.Group();
-  const slug=new THREE.Mesh(new THREE.SphereGeometry(0.065,6,6),new THREE.MeshBasicMaterial({color:0xffffff}));
-  const trail=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.005,1.3,6),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.88}));
-  trail.rotation.x=PI/2;trail.position.z=-0.65;
+  const slug=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,6),new THREE.MeshBasicMaterial({color:0xffffff}));
+  const trail=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.004,1.25,6),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.88}));
+  trail.rotation.x=PI/2;trail.position.z=-0.62;
   g.add(slug,trail);
   g.position.set(ox,oy,oz);
   g.lookAt(ox+dirVec.x,oy+dirVec.y,oz+dirVec.z);
   scene.add(g);
   bullets.push({
     m:g,x:ox,y:oy,z:oz,
-    vx:dirVec.x*speed,
-    vy:dirVec.y*speed,
-    vz:dirVec.z*speed,
+    vx:dirVec.x*speed,vy:dirVec.y*speed,vz:dirVec.z*speed,
     life:0.85,fromPlayer,dmg
   });
 }
 
 function fireWeapon(aimData){
-  const wep=SAVE.curWeapon;
-  if(P.cd>0)return;
-  P.cd=wep==='smg'?0.095:wep==='rifle'?0.15:0.25;
-  const dmg=wep==='rifle'?45:wep==='smg'?19:32;
-  const spd=wep==='rifle'?160:135;
+  const id=SAVE.curWeapon,w=WEAPONS[id];
+  if(P.cd>0||P.reloadTimer>0)return;
+  if((SAVE.mag[id]||0)<=0){
+    reloadWeapon();return;
+  }
+
+  SAVE.mag[id]--;
+  P.cd=w.cd;
+  updateWeaponHUD();
 
   const hp=aimData.hitPoint;
   const aimYaw=Math.atan2(hp.x-P.x,hp.z-P.z);
-  // Le personnage se retourne toujours exactement vers le point ciblé par le viseur !
   if(!P.car)P.h=aimYaw;
 
-  const gy=getGroundY(P.x,P.z,inside);
+  const gy=getGroundY(P.x,P.z,interiorType);
   const muzzleX=P.x+Math.sin(aimYaw)*0.85+Math.cos(aimYaw)*0.25;
   const muzzleZ=P.z+Math.cos(aimYaw)*0.85-Math.sin(aimYaw)*0.25;
   const muzzleY=gy+(P.car?1.35:1.45)+P.y;
 
-  const dirVec=new THREE.Vector3(hp.x-muzzleX,hp.y-muzzleY,hp.z-muzzleZ).normalize();
+  const baseDir=new THREE.Vector3(hp.x-muzzleX,hp.y-muzzleY,hp.z-muzzleZ).normalize();
 
   const flash=new THREE.Mesh(new THREE.SphereGeometry(0.18,6,6),new THREE.MeshBasicMaterial({color:0xffab00}));
   flash.position.set(muzzleX,muzzleY,muzzleZ);scene.add(flash);
   trs.push({m:flash,t:0.045});
 
-  const col=wep==='rifle'?0xff5252:wep==='smg'?0xffab40:0xfef08a;
-  spawnBullet(muzzleX,muzzleY,muzzleZ,dirVec,spd,dmg,true,col);
-  playGunshot(wep);
+  const col=id==='rifle'?0xef4444:id==='sniper'?0x38bdf8:id==='smg'?0xf97316:0xfef08a;
+  for(let p=0;p<w.pellets;p++){
+    const d=baseDir.clone();
+    d.x+=rn(-w.spread,w.spread);
+    d.y+=rn(-w.spread*0.6,w.spread*0.6);
+    d.z+=rn(-w.spread,w.spread);
+    d.normalize();
+    spawnBullet(muzzleX,muzzleY,muzzleZ,d,w.spd,w.dmg,true,col);
+  }
+  playGunshot(id);
 
-  if(!inside)for(const p of peds)if(!p.dead&&Math.hypot(p.x-P.x,p.z-P.z)<45)p.fl=5;
+  if((SAVE.mag[id]||0)===0)setTimeout(reloadWeapon,120);
+  if(!interiorType)for(const p of peds)if(!p.dead&&Math.hypot(p.x-P.x,p.z-P.z)<45)p.fl=5;
 }
 
 function updateBullets(dt){
@@ -963,9 +1134,18 @@ function updateBullets(dt){
     const stepDist=Math.hypot(stepX,stepY,stepZ);
     const fx=stepX/(stepDist||1),fz=stepZ/(stepDist||1);
 
-    if(!inside&&rayWall(b.x,b.z,fx,fz,stepDist)<stepDist){
-      const sp=bx(0.2,0.2,0.2,0xfef08a,b.x,b.y,b.z);trs.push({m:sp,t:0.08});
-      b.dead=1;scene.remove(b.m);continue;
+    // Impact sur vitre de bâtiment
+    if(!interiorType){
+      for(const bw of buildingWindows){
+        if(!bw.broken&&Math.hypot(bw.x-b.x,bw.z-b.z)<1.8&&b.y<3.4){
+          bw.broken=true;bw.mesh.visible=false;
+          spawnGlassShards(bw.x,2.2,bw.z,12);
+        }
+      }
+      if(rayWall(b.x,b.z,fx,fz,stepDist)<stepDist){
+        const sp=bx(0.18,0.18,0.18,0xfef08a,b.x,b.y,b.z);trs.push({m:sp,t:0.08});
+        b.dead=1;scene.remove(b.m);continue;
+      }
     }
 
     b.x+=stepX;b.y+=stepY;b.z+=stepZ;
@@ -976,20 +1156,21 @@ function updateBullets(dt){
       let hit=null;
       for(const c of cars){
         if(c===P.car)continue;
-        const gy=getGroundY(c.x,c.z,false);
+        const gy=getGroundY(c.x,c.z,null);
         if(Math.hypot(c.x-b.x,c.z-b.z)<(c.vType==='moto'?1.2:2.2)&&Math.abs(b.y-(gy+1.0))<1.3){hit=c;break;}
       }
-      if(!hit&&!inside){
+      if(!hit&&!interiorType){
         for(const t of enemies.concat(copsOnFoot).concat(peds.filter(p=>!p.dead))){
           if(t.dead)continue;
-          const gy=getGroundY(t.x,t.z,false);
+          const gy=getGroundY(t.x,t.z,null);
           if(Math.hypot(t.x-b.x,t.z-b.z)<0.95&&Math.abs(b.y-(gy+1.1))<1.2){hit=t;break;}
         }
       }
       if(hit){
-        const sp=bx(0.24,0.24,0.24,hit.vType?0xff9100:0xff1744,b.x,b.y,b.z);trs.push({m:sp,t:0.09});
+        const sp=bx(0.22,0.22,0.22,hit.vType?0xf97316:0xef4444,b.x,b.y,b.z);trs.push({m:sp,t:0.09});
         hit.hp-=b.dmg;
         if(hit.vType!==undefined){
+          if(b.y>1.08)shatterCarWindows(hit);
           addCrime(hit.kind==='cop'?2:1);
           if(hit.hp<=0)explodeCar(hit);
         }else if(hit.profile){
@@ -999,14 +1180,14 @@ function updateBullets(dt){
           if(hit.hp<=0){scene.remove(hit.m);copsOnFoot=copsOnFoot.filter(x=>x!==hit);P.cash+=50;}
         }else if(hit.hp<=0&&!hit.dead){
           hit.dead=1;scene.remove(hit.m);enemiesLeft--;
-          showToast(`Bandit neutralisé ! Restants : ${Math.max(0,enemiesLeft)}`);
+          showToast(`Cible neutralisée · Restants : ${Math.max(0,enemiesLeft)}`);
         }
         b.dead=1;scene.remove(b.m);
       }
     }else{
-      const gy=getGroundY(P.x,P.z,inside);
+      const gy=getGroundY(P.x,P.z,interiorType);
       if(P.car&&Math.hypot(P.car.x-b.x,P.car.z-b.z)<2.2){
-        P.car.hp-=b.dmg;b.dead=1;scene.remove(b.m);
+        P.car.hp-=b.dmg;if(R()<0.3)shatterCarWindows(P.car);b.dead=1;scene.remove(b.m);
       }else if(!P.car&&Math.hypot(P.x-b.x,P.z-b.z)<0.95&&Math.abs(b.y-(gy+P.y+1.1))<1.2){
         damagePlayer(b.dmg);b.dead=1;scene.remove(b.m);
       }
@@ -1015,10 +1196,20 @@ function updateBullets(dt){
   bullets=bullets.filter(b=>!b.dead);
 }
 
-// ===== CONDUITE & MARCHE ARRIÈRE FLUIDE
+// ===== CONDUITE, ROUES BRAQUABLES & MARCHE ARRIÈRE
+function animateCarWheels(c,dt){
+  if(!c.m.userData.wheels)return;
+  c.wheelSpin+=c.v*dt*2.2;
+  for(const w of c.m.userData.wheels)w.rotation.x=c.wheelSpin;
+  if(c.m.userData.steerPivots){
+    for(const p of c.m.userData.steerPivots)p.rotation.y=c.steerAngle;
+  }
+}
+
 function drivePlayerCar(c,dt,i){
   const maxSpd=c.vType==='moto'?38:c.vType==='vip'?37:33;
   const steerInput=cl(-i.x,-1,1);
+  c.steerAngle+=(steerInput*0.42-c.steerAngle)*Math.min(1,dt*12);
 
   if(c.m.userData.brakeMat){
     c.m.userData.brakeMat.color.setHex(i.brake?0xff1744:0x7f1d1d);
@@ -1047,7 +1238,6 @@ function drivePlayerCar(c,dt,i){
   const dir=c.v>=-0.05?1:-1;
   c.h+=steerInput*(c.vType==='moto'?3.2:2.65)*turnFactor*dir*dt;
 
-  // Inclinaison réaliste de la moto dans les virages
   if(c.vType==='moto'){
     c.m.rotation.z+=(-steerInput*0.32*turnFactor-c.m.rotation.z)*Math.min(1,dt*10);
   }
@@ -1056,7 +1246,7 @@ function drivePlayerCar(c,dt,i){
   c.z+=Math.cos(c.h)*c.v*dt;
 
   if(hitBuilding(c,c.vType==='moto'?1.2:2.1)){
-    if(Math.abs(c.v)>11){c.hp-=Math.abs(c.v)*0.32;playTone(105,0.14,'sawtooth');}
+    if(Math.abs(c.v)>12){c.hp-=Math.abs(c.v)*0.32;shatterCarWindows(c);playTone(105,0.14,'sawtooth');}
     c.v*=-0.2;
   }
 }
@@ -1065,7 +1255,7 @@ function isBlocked(c){
   const fx=Math.sin(c.h),fz=Math.cos(c.h);
   const ck=(o,fl,sl)=>{const dx=o.x-c.x,dz=o.z-c.z,f=dx*fx+dz*fz,s=Math.abs(dx*fz-dz*fx);return f>1&&f<fl&&s<sl;};
   for(const o of cars)if(o!==c&&ck(o,10,2.8))return 1;
-  if(!P.car&&!inside&&ck(P,9,2))return 1;
+  if(!P.car&&!interiorType&&ck(P,9,2))return 1;
   for(const p of peds)if(!p.dead&&ck(p,8,1.8))return 1;
   return 0;
 }
@@ -1074,22 +1264,26 @@ function updateAICar(c,dt){
   const chase=c.kind==='cop'&&stars>0&&S==='play';
   if(c.kind==='cop'&&c.m.userData.l1){
     const fl=Math.sin(tm*15)>0;
-    c.m.userData.l1.material.color.setHex(fl?0xff1744:0x4a0007);
-    c.m.userData.l2.material.color.setHex(!fl?0x2979ff:0x00194a);
+    c.m.userData.l1.material.color.setHex(fl?0xef4444:0x450a0a);
+    c.m.userData.l2.material.color.setHex(!fl?0x3b82f6:0x172554);
   }
   let tv=null;
   if(c.kind==='me'||!c.hasDriver)c.v-=c.v*Math.min(1,2*dt);
   else if(c.rev>0){c.rev-=dt;c.v=-6;c.h+=dt*2;}
   else if(chase){
     const dist=Math.hypot(P.x-c.x,P.z-c.z);
-    c.h-=angd(c.h,Math.atan2(P.x-c.x,P.z-c.z))*Math.min(1,dt*2.9);
+    const diff=angd(c.h,Math.atan2(P.x-c.x,P.z-c.z));
+    c.h-=diff*Math.min(1,dt*2.9);
+    c.steerAngle=cl(-diff*0.5,-0.4,0.4);
     if(dist<15){
       tv=0;
       if(Math.abs(c.v)<3)deployCopsFromCar(c);
     }else tv=26;
   }else{
     const ix=Math.round(c.x/CS)*CS,iz=Math.round(c.z/CS)*CS,inI=Math.abs(c.x-ix)<9&&Math.abs(c.z-iz)<9;
-    c.h-=angd(c.h,HD[c.d])*Math.min(1,dt*6);
+    const diff=angd(c.h,HD[c.d]);
+    c.h-=diff*Math.min(1,dt*6);
+    c.steerAngle=cl(-diff*0.6,-0.35,0.35);
     if(inI){
       if(!c.turned){
         c.turned=1;
@@ -1116,8 +1310,8 @@ function update(dt){
   tm+=dt;updateRadio(dt);
   const i=getInput(),pl=S==='play';
   const isAiming=pl&&!P.car&&!P.enteringCar&&!!i.aim;
+  const maxStam=SAVE.maxStamina||100;
 
-  // Cycle Jour / Crépuscule / Nuit lumineux
   if(pl){
     dayTime=(dayTime+dt*0.045)%24;
     const isNight=dayTime<6||dayTime>19;
@@ -1133,7 +1327,7 @@ function update(dt){
     lampGlowMat.opacity=isNight?0.22:(isDusk?0.12:0.0);
   }
 
-  if(!inside&&S!=='pause'&&S!=='shop'&&S!=='map'){
+  if(!interiorType&&S!=='pause'&&S!=='shop'&&S!=='map'){
     streamChunks(false,P.x,P.z);
     if(pend.length)createChunk(...pend.shift());
     if(cars.filter(c=>c.kind==='civ').length<12)autoSpawnTraffic('civ');
@@ -1145,20 +1339,35 @@ function update(dt){
     cars=cars.filter(c=>!c.dead);peds=peds.filter(p=>!p.rm);
   }
 
-  // Animation cinématique de dialogue façon GTA
+  // Cinématique de briefing vivante (gesticulation expressive des deux personnages)
   if(S==='cutscene'&&contactNPC){
     cutsceneTime+=dt;
-    swingLimbs(P.m,cutsceneTime*2.5,0.08,false);
-    swingLimbs(contactNPC.m,cutsceneTime*4.2,0.22,false);
+    swingLimbs(P.m,cutsceneTime*2.6,0,false,'talk');
+    swingLimbs(contactNPC.m,cutsceneTime*3.8,0,false,'talk');
   }
+
+  // Animation des PNJ intérieurs & balancement du sac de frappe
+  for(const npc of interiorNPCs){
+    npc.m.position.set(npc.x,0.15,npc.z);
+    npc.m.rotation.y=npc.h;
+    swingLimbs(npc.m,tm*2.2,0,false,'talk');
+  }
+  if(P.bagSwing>0){
+    P.bagSwing=Math.max(0,P.bagSwing-dt*1.8);
+    punchingBag.rotation.x=Math.sin(tm*16)*P.bagSwing*0.45;
+  }else punchingBag.rotation.x=0;
 
   if(pl){
     P.cd=Math.max(0,P.cd-dt);P.inv=Math.max(0,P.inv-dt);
+    if(P.punchTimer>0)P.punchTimer=Math.max(0,P.punchTimer-dt);
+    if(P.reloadTimer>0){
+      P.reloadTimer-=dt;
+      if(P.reloadTimer<=0){P.reloadTimer=0;finishReload();}
+    }
     if(P.y>0||P.vy>0){P.y+=P.vy*dt;P.vy-=18*dt;if(P.y<=0){P.y=0;P.vy=0;}}
 
-    // Raycast exact du viseur central
     const aimData=getCrosshairAimData();
-    P.m.userData.laser.visible=isAiming;
+    P.m.userData.laser.visible=isAiming&&P.reloadTimer<=0;
     const chEl=$('crosshair');
     chEl.classList.toggle('aiming',isAiming);
     chEl.classList.toggle('locked',!!aimData.targetObj);
@@ -1172,16 +1381,16 @@ function update(dt){
         const targetCamH=P.car.v<-1.5?P.car.h+PI:P.car.h;
         cy-=angd(cy,targetCamH)*Math.min(1,dt*2.2);
       }
-      P.stamina=Math.min(100,P.stamina+15*dt);
+      P.stamina=Math.min(maxStam,P.stamina+15*dt);
       if(Math.hypot(P.x-GAS_X,P.z-GAS_Z)<12&&P.car.hp<P.car.maxHp){
         P.car.hp=Math.min(P.car.maxHp,P.car.hp+35*dt);
-        if(R()<0.08)showToast('⛽ Station-service : Réparation du véhicule...');
+        if(R()<0.08)showToast('Station-service : Réparation du véhicule...');
       }
     }else{
       const m=Math.hypot(i.x,i.y);
       const sprinting=i.run&&!isAiming&&P.stamina>4&&m>0.1;
-      if(sprinting)P.stamina=Math.max(0,P.stamina-22*dt);
-      else P.stamina=Math.min(100,P.stamina+16*dt);
+      if(sprinting)P.stamina=Math.max(0,P.stamina-20*dt);
+      else P.stamina=Math.min(maxStam,P.stamina+16*dt);
 
       if(isAiming){
         const aimYaw=Math.atan2(aimData.hitPoint.x-P.x,aimData.hitPoint.z-P.z);
@@ -1199,17 +1408,21 @@ function update(dt){
         P.x+=Math.sin(th)*sp*dt;P.z+=Math.cos(th)*sp*dt;
         P.wk+=dt*sp*1.9;
       }
-      if(inside){
-        P.x=cl(P.x,IX-8.2,IX+8.2);P.z=cl(P.z,IZ-7.2,IZ+7.2);
-        for(const q of roomObs){
+      if(interiorType){
+        const cfg=INTERIORS[interiorType];
+        P.x=cl(P.x,cfg.ix-cfg.w/2+0.8,cfg.ix+cfg.w/2-0.8);
+        P.z=cl(P.z,cfg.iz-cfg.d/2+0.8,cfg.iz+cfg.d/2-0.8);
+        for(const q of cfg.obs){
           const x=cl(P.x,q[0],q[2]),z=cl(P.z,q[1],q[3]),dx=P.x-x,dz=P.z-z,d2=dx*dx+dz*dz;
           if(d2<0.36){const d=Math.sqrt(d2)||0.01;P.x+=dx/d*(0.6-d);P.z+=dz/d*(0.6-d);}
         }
-        if(roomCash.visible&&Math.hypot(P.x-roomCash.position.x,P.z-roomCash.position.z)<2.1){
-          roomCash.visible=false;P.cash+=150;writeSave();showToast('+150 FCFA trouvés dans la villa !');playTone(840,0.22,'sine');
-        }
-        if(roomMed.visible&&Math.hypot(P.x-roomMed.position.x,P.z-roomMed.position.z)<2.1){
-          roomMed.visible=false;P.hp=Math.min(100,P.hp+50);writeSave();showToast('+50 Santé !');playTone(620,0.25,'sine');
+        if(interiorType==='villa'){
+          if(roomCash.visible&&Math.hypot(P.x-roomCash.position.x,P.z-roomCash.position.z)<2.1){
+            roomCash.visible=false;P.cash+=150;writeSave();showToast('+150 FCFA récupérés');playTone(840,0.22,'sine');
+          }
+          if(roomMed.visible&&Math.hypot(P.x-roomMed.position.x,P.z-roomMed.position.z)<2.1){
+            roomMed.visible=false;P.hp=Math.min(100,P.hp+50);writeSave();showToast('+50 Santé');playTone(620,0.25,'sine');
+          }
         }
       }else{
         hitBuilding(P,0.62);
@@ -1220,51 +1433,49 @@ function update(dt){
     if(i.fire&&!P.enteringCar)fireWeapon(aimData);
     updateBullets(dt);
 
-    // Balise 3D & Flèche GPS fine au-dessus de la tête
     const tgt=getActiveTarget();
-    beacon.visible=!inside&&!!tgt;
+    beacon.visible=!interiorType&&!!tgt;
     bRing.rotation.y+=dt*2.4;
     if(tgt){
-      const bGy=getGroundY(tgt.tx,tgt.tz,false);
+      const bGy=getGroundY(tgt.tx,tgt.tz,null);
       beacon.position.set(tgt.tx,bGy,tgt.tz);
-      bRing.material.color.setHex(tgt.isCustom?0x00e676:0xffd54f);
-      bBeam.material.color.setHex(tgt.isCustom?0x00e676:0xffd54f);
+      bRing.material.color.setHex(tgt.isCustom?0x22c55e:0xeab308);
+      bBeam.material.color.setHex(tgt.isCustom?0x22c55e:0xeab308);
 
-      const pGy=getGroundY(P.x,P.z,inside);
-      gpsArrow.visible=!inside;
+      const pGy=getGroundY(P.x,P.z,interiorType);
+      gpsArrow.visible=!interiorType;
       gpsArrow.position.set(P.x,pGy+(P.car?3.1:3.25+P.y)+Math.sin(tm*4)*0.08,P.z);
       gpsArrow.rotation.y=Math.atan2(tgt.tx-P.x,tgt.tz-P.z);
     }else gpsArrow.visible=false;
 
     if(customWaypoint&&Math.hypot(P.x-customWaypoint.x,P.z-customWaypoint.z)<6){
-      customWaypoint=null;showToast('📍 Tu es arrivé à ton repère GPS !');playTone(760,0.2,'sine');
+      customWaypoint=null;showToast('Arrivé au repère GPS');playTone(760,0.2,'sine');
     }
 
-    // Progression des missions & déclenchement cinématique au contact
-    if(!inside&&activeMission){
+    if(!interiorType&&activeMission){
       if(missionPhase==='approach_contact'){
         const distC=Math.hypot(P.x-activeMission.cx,P.z-activeMission.cz);
-        $('mc-dist').textContent=`📍 Contact à ${Math.round(distC)} m`;
+        $('mc-dist').textContent=`Contact : ${Math.round(distC)} m`;
         if(distC<4.2)triggerMissionBriefing();
       }else if(missionPhase==='active'){
         missionTimeLeft-=dt;
         const dist=Math.hypot(P.x-activeMission.tx,P.z-activeMission.tz);
-        $('mc-timer').textContent=`⏱ ${Math.max(0,Math.ceil(missionTimeLeft))}s`;
-        $('mc-dist').textContent=activeMission.type==='combat'?`🎯 Restants : ${Math.max(0,enemiesLeft)}`:`📍 Objectif à ${Math.round(dist)} m`;
-        if(missionTimeLeft<=0){showToast('⏰ Temps écoulé ! Retourne voir le contact.');prepareNextMission();}
+        $('mc-timer').textContent=`${Math.max(0,Math.ceil(missionTimeLeft))}s`;
+        $('mc-dist').textContent=activeMission.type==='combat'?`Cibles : ${Math.max(0,enemiesLeft)}`:`Distance : ${Math.round(dist)} m`;
+        if(missionTimeLeft<=0){showToast('Temps écoulé · Retourne voir le contact');prepareNextMission();}
         else if(activeMission.type==='combat'){
           if(enemiesLeft<=0){
             P.cash+=activeMission.reward;SAVE.missionIdx++;writeSave();
-            showToast(`🏆 Mission accomplie ! +${activeMission.reward} FCFA`);playTone(880,0.4,'sine',0.07);prepareNextMission();
+            showToast(`Contrat réussi · +${activeMission.reward} FCFA`);playTone(880,0.4,'sine',0.07);prepareNextMission();
           }
         }else if(dist<5.5){
           P.cash+=activeMission.reward;if(SAVE.missionIdx<STORY_MISSIONS.length)SAVE.missionIdx++;writeSave();
-          showToast(`🏆 Objectif atteint ! +${activeMission.reward} FCFA`);playTone(880,0.4,'sine',0.07);prepareNextMission();
+          showToast(`Contrat réussi · +${activeMission.reward} FCFA`);playTone(880,0.4,'sine',0.07);prepareNextMission();
         }
       }
     }
 
-    if(!inside){
+    if(!interiorType){
       for(const c of cars)if(c!==P.car&&!P.car&&!P.enteringCar&&Math.abs(c.v)>7&&Math.hypot(c.x-P.x,c.z-P.z)<2.3)damagePlayer(Math.abs(c.v)*1.1);
       if(stars>0){
         wT-=dt*(cars.some(c=>c.kind==='cop'&&Math.hypot(c.x-P.x,c.z-P.z)<48)||copsOnFoot.length>0?1:2.4);
@@ -1281,15 +1492,16 @@ function update(dt){
   if(S==='dead'){
     dT-=dt;
     if(dT<=0){
-      inside=0;P.x=3*CS+18;P.z=3*CS+12;P.hp=100;P.inv=2;P.cash=Math.max(0,P.cash-150);
+      interiorType=null;P.x=3*CS+18;P.z=3*CS+12;P.hp=100;P.inv=2;P.cash=Math.max(0,P.cash-150);
       stars=0;S='play';$('wasted').style.display='none';streamChunks(true,P.x,P.z);writeSave();
-      showToast('🏥 Hôpital Central de Yaoundé : -150 FCFA');
+      showToast('Hôpital Central de Yaoundé · -150 FCFA');
     }
   }
 
-  if(!inside&&S!=='pause'&&S!=='shop'&&S!=='map'){
+  if(!interiorType&&S!=='pause'&&S!=='shop'&&S!=='map'){
     for(const c of cars){
       if(c!==P.car&&(!P.enteringCar||P.enteringCar.car!==c))updateAICar(c,dt);
+      animateCarWheels(c,dt);
       if(c.hp<c.maxHp*0.45){
         c.smokeT-=dt;
         if(c.smokeT<=0){
@@ -1306,6 +1518,7 @@ function update(dt){
         p.x+=nx*o;p.z+=nz*o;q.x-=nx*o;q.z-=nz*o;
         if(dv>8){
           p.hp-=dv*0.42;q.hp-=dv*0.42;
+          if(dv>13){shatterCarWindows(p);shatterCarWindows(q);}
           if(P.car===p||P.car===q){playTone(115,0.12,'sawtooth');if(p.kind==='cop'||q.kind==='cop')addCrime(2);}
         }
         const avg=(p.v+q.v)*0.35;
@@ -1329,13 +1542,13 @@ function update(dt){
         cp.cd=cp.isBir?0.95:1.35;
         const fx=(P.x-cp.x)/d,fz=(P.z-cp.z)/d;
         if(rayWall(cp.x,cp.z,fx,fz,d)>=d-0.6){
-          const gy=getGroundY(cp.x,cp.z,false);
+          const gy=getGroundY(cp.x,cp.z,null);
           const dirV=new THREE.Vector3(P.x-cp.x,0,P.z-cp.z).normalize();
-          spawnBullet(cp.x+fx*0.8,gy+1.35,cp.z+fz*0.8,dirV,95,cp.isBir?11:8,false,0xff1744);
+          spawnBullet(cp.x+fx*0.8,gy+1.35,cp.z+fz*0.8,dirV,95,cp.isBir?11:8,false,0xef4444);
           playGunshot('pistol');
         }
       }
-      const cGy=getGroundY(cp.x,cp.z,false);
+      const cGy=getGroundY(cp.x,cp.z,null);
       cp.m.position.set(cp.x,cGy,cp.z);cp.m.rotation.y=cp.h;swingLimbs(cp.m,cp.wk,0.45,true);
     }
 
@@ -1368,69 +1581,83 @@ function update(dt){
         e.cd=1.4;
         const fx=(P.x-e.x)/d,fz=(P.z-e.z)/d;
         if(rayWall(e.x,e.z,fx,fz,d)>=d-0.6){
-          const gy=getGroundY(e.x,e.z,false);
+          const gy=getGroundY(e.x,e.z,null);
           const dirV=new THREE.Vector3(P.x-e.x,0,P.z-e.z).normalize();
-          spawnBullet(e.x+fx*0.8,gy+1.35,e.z+fz*0.8,dirV,95,10,false,0xff3d00);
+          spawnBullet(e.x+fx*0.8,gy+1.35,e.z+fz*0.8,dirV,95,10,false,0xf97316);
           playGunshot('pistol');
         }
       }
-      const eGy=getGroundY(e.x,e.z,false);
+      const eGy=getGroundY(e.x,e.z,null);
       e.m.position.set(e.x,eGy,e.z);e.m.rotation.y=e.h;swingLimbs(e.m,e.wk,0.45,false);
     }
   }
 
-  // Positionnement vertical exact sur le trottoir / route / intérieur pour toutes les entités
   for(const p of peds){
-    const gy=getGroundY(p.x,p.z,false);
+    const gy=getGroundY(p.x,p.z,null);
     p.m.position.set(p.x,p.dead?gy+0.35:gy,p.z);
     if(!p.dead){p.m.rotation.y=p.h;swingLimbs(p.m,p.wk,0.45,p.fl>0);}
   }
   for(const c of cars){
-    const gy=getGroundY(c.x,c.z,false);
+    const gy=getGroundY(c.x,c.z,null);
     c.m.position.set(c.x,gy,c.z);c.m.rotation.y=c.h;
   }
   if(contactNPC){
     contactNPC.m.position.set(contactNPC.x,contactNPC.y,contactNPC.z);
     contactNPC.m.rotation.y=contactNPC.h;
   }
-  const playerGy=getGroundY(P.x,P.z,inside);
+  const playerGy=getGroundY(P.x,P.z,interiorType);
   P.m.position.set(P.x,playerGy+P.y,P.z);
   P.m.rotation.y=P.h;
+  P.m.userData.gun.visible=!P.car&&P.punchTimer<=0;
+
   if(S!=='cutscene'){
     const isMoving=!P.car&&(Math.hypot(i.x,i.y)>0.05||!!P.enteringCar);
-    swingLimbs(P.m,P.wk,isMoving?0.48:0.04,i.run&&!isAiming);
+    const animMode=P.punchTimer>0?'punch':P.reloadTimer>0?'reload':'walk';
+    swingLimbs(P.m,P.wk,isMoving?0.48:0.04,i.run&&!isAiming,animMode,tm);
   }
-  for(const t of trs){t.t-=dt;if(t.gr)t.m.scale.setScalar(1+(0.55-t.t)*5);if(t.t<=0){scene.remove(t.m);t.d=1;}}
+  for(const t of trs){
+    t.t-=dt;
+    if(t.gr)t.m.scale.setScalar(1+(0.55-t.t)*5);
+    if(t.vy!==undefined){t.m.position.x+=t.vx*dt;t.m.position.y+=t.vy*dt;t.m.position.z+=t.vz*dt;t.vy-=12*dt;}
+    if(t.t<=0){scene.remove(t.m);t.d=1;}
+  }
   trs=trs.filter(t=>!t.d);
 
-  // ===== CAMÉRA (CINÉMATIQUE BRIEFING, ZOOM ÉPAULE EN VISÉE, OU CONDUITE)
+  // ===== CAMÉRA (CINÉMATIQUE CHAMP/CONTRE-CHAMP, ZOOM SNIPER/ÉPAULE, OU CONDUITE)
   if(S==='cutscene'&&contactNPC){
-    const midX=(P.x+contactNPC.x)*0.5,midZ=(P.z+contactNPC.z)*0.5;
-    const ang=Math.atan2(contactNPC.x-P.x,contactNPC.z-P.z)+PI/2;
-    cam.fov+=(50-cam.fov)*Math.min(1,dt*6);
+    const shot=Math.floor(cutsceneTime/3.2)%2;
+    const focus=shot===0?contactNPC:P;
+    const other=shot===0?P:contactNPC;
+    const dirAng=Math.atan2(other.x-focus.x,other.z-focus.z)+0.45;
+    cam.fov+=(46-cam.fov)*Math.min(1,dt*6);
     cam.updateProjectionMatrix();
-    cam.position.set(midX+Math.sin(ang)*3.8,playerGy+1.85,midZ+Math.cos(ang)*3.8);
-    cam.lookAt(midX,playerGy+1.45,midZ);
+    cam.position.set(focus.x+Math.sin(dirAng)*2.6,playerGy+1.65,focus.z+Math.cos(dirAng)*2.6);
+    cam.lookAt(focus.x,playerGy+1.52,focus.z);
   }else{
-    let D=inside?4.5:P.car?(P.car.vType==='moto'?8.5:10.8):(isAiming?3.4:6.6);
+    let D=interiorType?4.5:P.car?(P.car.vType==='moto'?8.5:10.8):(isAiming?3.4:6.6);
     if(S==='menu'){cy+=dt*0.22;D=15;}
     const sv=P.car?Math.abs(P.car.v)/35:0;
     zs+=(sv-zs)*dt*2;
-    const targetFov=isAiming?46:(62+zs*13);
-    cam.fov+=(targetFov-cam.fov)*Math.min(1,dt*10);
+    const zoomFov=(SAVE.curWeapon==='sniper'&&isAiming)?28:(isAiming?46:(62+zs*13));
+    cam.fov+=(zoomFov-cam.fov)*Math.min(1,dt*10);
     cam.updateProjectionMatrix();
 
     const dirX=-Math.sin(cy)*Math.cos(cp),dirZ=-Math.cos(cy)*Math.cos(cp);
     const hLen=Math.hypot(dirX,dirZ)||1;
     let safeD=D;
-    if(!inside&&S!=='menu'){
+    if(!interiorType&&S!=='menu'){
       const wallD=rayWall(P.x,P.z,dirX/hLen,dirZ/hLen,D*hLen);
       safeD=Math.max(1.6,(wallD-0.9)/hLen);
     }
     const shoulder=isAiming?0.65:0;
     const sx=-Math.cos(cy)*shoulder,sz=Math.sin(cy)*shoulder;
     let cx=P.x+sx+dirX*safeD,cz=P.z+sz+dirZ*safeD,ch=(isAiming?1.68:1.8)+playerGy+P.y+safeD*Math.sin(cp);
-    if(inside){cx=cl(cx,IX-8.4,IX+8.4);cz=cl(cz,IZ-7.4,IZ+7.4);ch=Math.min(ch,4.6);}
+    if(interiorType){
+      const cfg=INTERIORS[interiorType];
+      cx=cl(cx,cfg.ix-cfg.w/2+0.6,cfg.ix+cfg.w/2-0.6);
+      cz=cl(cz,cfg.iz-cfg.d/2+0.6,cfg.iz+cfg.d/2-0.6);
+      ch=Math.min(ch,4.6);
+    }
     cam.position.set(cx,ch,cz);
     cam.lookAt(P.x+sx+Math.sin(cy)*6,P.car?playerGy+1.2:playerGy+1.58+P.y,P.z+sz+Math.cos(cy)*6);
   }
@@ -1438,10 +1665,10 @@ function update(dt){
   // ===== HUD & RADAR
   $('hp-bar').style.width=cl(P.hp,0,100)+'%';
   $('ar-bar').style.width=cl(P.armor,0,100)+'%';
-  $('st-bar').style.width=cl(P.stamina,0,100)+'%';
+  $('st-bar').style.width=cl((P.stamina/maxStam)*100,0,100)+'%';
   $('stars').textContent='★'.repeat(stars)+'☆'.repeat(5-stars);
   $('wanted-box').classList.toggle('active',stars>0);
-  $('wanted-label').textContent=stars>0?`ALERTE NIVEAU ${stars}`:'ZONE CALME';
+  $('wanted-label').textContent=stars>0?`ALERTE NIVEAU ${stars}`:'INDICE DE RECHERCHE';
   $('cash').textContent=P.cash+' FCFA';
   const hh=Math.floor(dayTime),mm=Math.floor((dayTime-hh)*60);
   $('clock-tag').textContent=`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
@@ -1451,21 +1678,32 @@ function update(dt){
     $('speed-val').textContent=(P.car.v<-0.5?'R ':'')+kmh;
     const pct=cl((P.car.hp/P.car.maxHp)*100,0,100);
     $('car-hp-bar').style.width=pct+'%';
-    $('car-hp-bar').style.background=pct<35?'#ff1744':pct<65?'#ff9100':'#00e676';
+    $('car-hp-bar').style.background=pct<35?'#ef4444':pct<65?'#f97316':'#22c55e';
   }
 
   const distMon=Math.hypot(P.x-MON_X,P.z-MON_Z);
-  const distShop=Math.hypot(P.x-SHOP_X,P.z-SHOP_Z);
   const distGas=Math.hypot(P.x-GAS_X,P.z-GAS_Z);
-  $('zone-tag').textContent=inside?'🏠 INTÉRIEUR VILLA':distMon<55?'🏛️ MONUMENT RÉUNIFICATION':distShop<25?'🛒 ARMURERIE & SHOP':distGas<25?'⛽ STATION-SERVICE':P.z>4*CS&&P.x<4*CS?'🎓 NGOA-EKELLÉ':P.x>=4*CS&&P.z<4*CS?'🌴 QUARTIER BASTOS':P.x>=4*CS&&P.z>=4*CS?'🏙️ MVOG-MBI':'📍 TSINGA · BD 20 MAI';
+  const intNames={villa:'INTÉRIEUR · VILLA',gym:'INTÉRIEUR · SALLE DE SPORT',restaurant:'INTÉRIEUR · RESTAURANT LE MBOA',armory:'INTÉRIEUR · ARMURERIE'};
+  $('zone-tag').textContent=interiorType?intNames[interiorType]:distMon<55?'MONUMENT RÉUNIFICATION':distGas<25?'STATION-SERVICE':P.z>4*CS&&P.x<4*CS?'NGOA-EKELLÉ':P.x>=4*CS&&P.z<4*CS?'QUARTIER BASTOS':P.x>=4*CS&&P.z>=4*CS?'MVOG-MBI':'TSINGA · BD 20 MAI';
 
   if(msgT>0){msgT-=dt;if(msgT<=0)$('toast').classList.remove('show');}
   if(bubbleT>0){bubbleT-=dt;if(bubbleT<=0)$('npc-bubble').style.display='none';}
 
-  const ab=document.querySelector('#controls-foot .t-act');
-  if(ab){
-    const ic=inside?'🚪':distShop<4.8?'🛒':findNearestCar(5.8)?'🚗':nearDoor()?'🏠':findNearestNPC(6.0)?'💬':'🚗';
-    if(ab.textContent!==ic)ab.textContent=ic;
+  // Libellé contextuel sobre sur le bouton d'action
+  const actLbl=$('act-label');
+  if(actLbl){
+    let lbl='ACTION';
+    if(interiorType){
+      const cfg=INTERIORS[interiorType];
+      if(Math.hypot(P.x-cfg.ix,P.z-(cfg.iz+cfg.d/2-1.2))<3.2)lbl='SORTIR';
+      else if(interiorType==='gym'&&Math.hypot(P.x-(IX_GYM-2.5),P.z-(IZ_GYM-1.5))<2.8)lbl='BOXER';
+      else if(interiorType==='restaurant'&&Math.hypot(P.x-IX_RESTO,P.z-(IZ_RESTO-3.2))<3.2)lbl='MANGER';
+      else if(interiorType==='armory'&&Math.hypot(P.x-IX_ARMORY,P.z-(IZ_ARMORY-2.2))<3.2)lbl='ACHETER';
+      else lbl='PARLER';
+    }else if(findNearestCar(5.8))lbl='ENTRER';
+    else if(nearDoor())lbl='ENTRER';
+    else if(findNearestNPC(6.0))lbl='PARLER';
+    if(actLbl.textContent!==lbl)actLbl.textContent=lbl;
   }
   drawRadar();
 }
@@ -1485,9 +1723,9 @@ function drawRadar(){
   rCtx.clearRect(0,0,W,H);
   rCtx.save();
   rCtx.beginPath();rCtx.arc(CX,CY,58,0,PI*2);rCtx.clip();
-  rCtx.fillStyle='#0d1526';rCtx.fillRect(0,0,W,H);
+  rCtx.fillStyle='#0c121e';rCtx.fillRect(0,0,W,H);
 
-  if(!inside){
+  if(!interiorType){
     rCtx.strokeStyle='#334155';rCtx.lineWidth=4.5;
     const gx0=Math.floor((P.x-140)/CS)*CS,gz0=Math.floor((P.z-140)/CS)*CS;
     for(let x=gx0;x<=P.x+140;x+=CS){
@@ -1503,27 +1741,26 @@ function drawRadar(){
       }
     }
 
-    // Maisons visitables proches
-    rCtx.fillStyle='#2dd4bf';
     for(const d of enterableDoors){
       const pd=worldToRadar(d.x,d.z,SC);
-      if(Math.hypot(pd.x,pd.y)<56)rCtx.fillRect(CX+pd.x-2,CY+pd.y-2,4,4);
+      if(Math.hypot(pd.x,pd.y)<56){
+        rCtx.fillStyle=d.type==='armory'?'#38bdf8':d.type==='gym'?'#a855f7':d.type==='restaurant'?'#f97316':'#14b8a6';
+        rCtx.fillRect(CX+pd.x-2.5,CY+pd.y-2.5,5,5);
+      }
     }
 
-    const ps=worldToRadar(SHOP_X,SHOP_Z,SC);
-    rCtx.fillStyle='#38bdf8';rCtx.fillRect(CX+ps.x-3,CY+ps.y-3,6,6);
     const pg=worldToRadar(GAS_X,GAS_Z,SC);
     rCtx.fillStyle='#fb923c';rCtx.fillRect(CX+pg.x-3,CY+pg.y-3,6,6);
 
     for(const c of cars){
       if(c===P.car)continue;
       const pc=worldToRadar(c.x,c.z,SC);
-      rCtx.fillStyle=c.kind==='cop'?(Math.sin(tm*14)>0?'#ff1744':'#2979ff'):c.vType==='taxi'?'#facc15':'#94a3b8';
+      rCtx.fillStyle=c.kind==='cop'?(Math.sin(tm*14)>0?'#ef4444':'#3b82f6'):c.vType==='taxi'?'#facc15':'#94a3b8';
       rCtx.fillRect(CX+pc.x-2,CY+pc.y-2,4,4);
     }
     for(const cp of copsOnFoot){
       const pcp=worldToRadar(cp.x,cp.z,SC);
-      rCtx.fillStyle='#2979ff';rCtx.beginPath();rCtx.arc(CX+pcp.x,CY+pcp.y,3,0,PI*2);rCtx.fill();
+      rCtx.fillStyle='#3b82f6';rCtx.beginPath();rCtx.arc(CX+pcp.x,CY+pcp.y,3,0,PI*2);rCtx.fill();
     }
 
     const tgt=getActiveTarget();
@@ -1533,12 +1770,12 @@ function drawRadar(){
       const bd=Math.hypot(tx,ty);
       if(bd>48){tx*=48/bd;ty*=48/bd;}
       rCtx.save();
-      rCtx.strokeStyle=tgt.isCustom?'#00e676':'#ffd54f';
+      rCtx.strokeStyle=tgt.isCustom?'#22c55e':'#eab308';
       rCtx.lineWidth=2.5;rCtx.setLineDash([4,3]);
       rCtx.beginPath();rCtx.moveTo(CX,CY);rCtx.lineTo(CX+tx,CY+ty);rCtx.stroke();
       rCtx.restore();
 
-      rCtx.fillStyle=tgt.isCustom?'#00e676':'#ffd54f';
+      rCtx.fillStyle=tgt.isCustom?'#22c55e':'#eab308';
       rCtx.beginPath();rCtx.arc(CX+tx,CY+ty,6.5,0,PI*2);rCtx.fill();
       if(tgt.isContact){
         rCtx.fillStyle='#000';rCtx.font='900 8px sans-serif';rCtx.textAlign='center';
@@ -1552,7 +1789,7 @@ function drawRadar(){
   rCtx.save();
   rCtx.translate(CX,CY);
   rCtx.rotate(relH);
-  rCtx.fillStyle='#ff4081';
+  rCtx.fillStyle='#ef4444';
   rCtx.beginPath();rCtx.moveTo(0,-6.5);rCtx.lineTo(4.5,5);rCtx.lineTo(-4.5,5);rCtx.closePath();rCtx.fill();
   rCtx.restore();
 }
@@ -1562,8 +1799,9 @@ function startGame(){
   for(const p of peds)scene.remove(p.m);
   for(const b of bullets)scene.remove(b.m);
   clearCopsOnFoot();clearContactNPC();
-  cars=[];peds=[];bullets=[];stars=0;inside=0;
-  P.x=SAVE.px;P.z=SAVE.pz;P.h=0;P.y=0;P.vy=0;P.hp=SAVE.hp;P.armor=SAVE.armor;P.stamina=100;P.cash=SAVE.cash;P.car=null;P.enteringCar=null;P.inv=1;
+  cars=[];peds=[];bullets=[];stars=0;interiorType=null;
+  P.x=SAVE.px;P.z=SAVE.pz;P.h=0;P.y=0;P.vy=0;P.hp=SAVE.hp;P.armor=SAVE.armor;P.stamina=SAVE.maxStamina||100;P.cash=SAVE.cash;
+  P.car=null;P.enteringCar=null;P.reloadTimer=0;P.punchTimer=0;P.inv=1;
   P.m.visible=true;cy=0;
   updateWeaponHUD();updateControlUI();
   streamChunks(true,P.x,P.z);
@@ -1585,4 +1823,3 @@ function loop(t){
   ren.render(scene,cam);
 }
 requestAnimationFrame(loop);
-
