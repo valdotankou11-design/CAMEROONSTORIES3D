@@ -38,7 +38,7 @@ scene.add(sun);
 function onResize(){ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();}
 onResize();addEventListener('resize',onResize);
 
-// ===== HAUTEUR EXACTE DU SOL (TROTTOIRS +0.26m, ROUTES 0m, PLACE +0.40m, INTÉRIEURS +0.15m)
+// ===== HAUTEUR EXACTE DU SOL
 function getGroundY(x,z,interiorType=null){
   if(interiorType)return 0.15;
   const cx=Math.floor(x/CS),cz=Math.floor(z/CS);
@@ -116,7 +116,7 @@ roadTex.wrapS=roadTex.wrapT=THREE.ClampToEdgeWrapping;
 const roadMat=new THREE.MeshStandardMaterial({map:roadTex,roughness:0.88});
 const PG=new THREE.PlaneGeometry(CS,CS);
 
-// ===== PERSONNAGES ARTICULÉS BIOMÉCANIQUES (COUDES, GENOUX, TÊTE MOBILE, RESPIRATION)
+// ===== PERSONNAGES ARTICULÉS BIOMÉCANIQUES
 function buildHuman(shirtCol,skinCol,role){
   const g=new THREE.Group(),u={};
   const pants=role==='cop'?0x1e293b:role==='bir'?0x2d4a22:role==='gym'?0x111827:0x334155;
@@ -129,7 +129,6 @@ function buildHuman(shirtCol,skinCol,role){
   if(role==='chef')bx(0.48,0.75,0.32,0xf8fafc,0,1.18,0.02,torso);
   cyl(0.085,0.095,0.14,10,skinCol,0,1.72,0,torso);
 
-  // Groupe Tête articulé (hochement & regard)
   const headGrp=new THREE.Group();headGrp.position.set(0,1.94,0);
   const head=new THREE.Mesh(new THREE.SphereGeometry(0.205,14,12),mt(skinCol,0.65));
   headGrp.add(head);
@@ -150,14 +149,12 @@ function buildHuman(shirtCol,skinCol,role){
   }
   torso.add(headGrp);u.head=headGrp;
 
-  // Bras gauche avec coude articulé
   const armL=new THREE.Group();armL.position.set(-0.33,1.58,0);
   cyl(0.08,0.068,0.30,8,shirtCol,0,-0.15,0,armL);
   const elbowL=new THREE.Group();elbowL.position.set(0,-0.30,0);
   cyl(0.065,0.055,0.32,8,skinCol,0,-0.16,0,elbowL);
   armL.add(elbowL);torso.add(armL);u.armL=armL;u.elbowL=elbowL;
 
-  // Bras droit avec coude articulé & arme
   const armR=new THREE.Group();armR.position.set(0.33,1.58,0);
   cyl(0.08,0.068,0.30,8,shirtCol,0,-0.15,0,armR);
   const elbowR=new THREE.Group();elbowR.position.set(0,-0.30,0);
@@ -173,7 +170,6 @@ function buildHuman(shirtCol,skinCol,role){
 
   g.add(torso);u.torso=torso;
 
-  // Jambes avec genoux articulés
   const legL=new THREE.Group();legL.position.set(-0.14,0.86,0);
   cyl(0.11,0.092,0.42,10,pants,0,-0.21,0,legL);
   const kneeL=new THREE.Group();kneeL.position.set(0,-0.42,0);
@@ -191,10 +187,9 @@ function buildHuman(shirtCol,skinCol,role){
   g.userData=u;scene.add(g);return g;
 }
 
-function swingLimbs(g,t,amp,isRunning=false,mode='walk',actionTimer=0){
+function swingLimbs(g,t,amp,isRunning=false,mode='walk',actionTimer=0,comboStep=0){
   const u=g.userData;
   if(mode==='talk'){
-    // Animation expressive de conversation : gestes des bras, coudes pliés, hochement de tête
     const g1=Math.sin(t*1.1),g2=Math.cos(t*0.85);
     u.torso.rotation.y=g1*0.14;
     u.torso.position.y=Math.abs(Math.sin(t*0.6))*0.03;
@@ -212,17 +207,38 @@ function swingLimbs(g,t,amp,isRunning=false,mode='walk',actionTimer=0){
     return;
   }
   if(mode==='punch'){
-    // Directs gauche-droite sur le sac de frappe
-    const p=Math.sin(actionTimer*18);
-    u.torso.rotation.y=p*0.35;
-    u.armR.rotation.x=-1.45+Math.max(0,p)*0.25;
-    u.elbowR.rotation.x=-0.25-Math.max(0,-p)*0.8;
-    u.armL.rotation.x=-1.45+Math.max(0,-p)*0.25;
-    u.elbowL.rotation.x=-0.25-Math.max(0,p)*0.8;
+    // Enchaînement réaliste de 3 coups de poing (Jab gauche, Direct droit, Crochet)
+    const ext=Math.sin(cl(1-(actionTimer/0.36),0,1)*PI);
+    u.torso.rotation.x=0.12*ext;
+    if(comboStep===0){
+      u.torso.rotation.y=0.38*ext;
+      u.armL.rotation.x=-1.65*ext;u.armL.rotation.z=0.05;
+      u.elbowL.rotation.x=-0.15;
+      u.armR.rotation.x=-1.05;u.armR.rotation.z=-0.15;
+      u.elbowR.rotation.x=-1.45;
+    }else if(comboStep===1){
+      u.torso.rotation.y=-0.42*ext;
+      u.armR.rotation.x=-1.7*ext;u.armR.rotation.z=-0.05;
+      u.elbowR.rotation.x=-0.12;
+      u.armL.rotation.x=-1.05;u.armL.rotation.z=0.15;
+      u.elbowL.rotation.x=-1.45;
+    }else{
+      u.torso.rotation.y=-0.52*ext;
+      u.armR.rotation.x=-1.95*ext;u.armR.rotation.z=0.38*ext;
+      u.elbowR.rotation.x=-0.45;
+      u.armL.rotation.x=-1.15;u.elbowL.rotation.x=-1.5;
+    }
+    return;
+  }
+  if(mode==='guard'){
+    // Garde de boxe mains nues
+    u.torso.rotation.y=0.24;
+    u.torso.rotation.x=0.06;
+    u.armL.rotation.x=-1.15;u.armL.rotation.z=0.12;u.elbowL.rotation.x=-1.5;
+    u.armR.rotation.x=-1.05;u.armR.rotation.z=-0.12;u.elbowR.rotation.x=-1.55;
     return;
   }
   if(mode==='reload'){
-    // Animation de rechargement d'arme
     u.armR.rotation.x=-0.95;
     u.elbowR.rotation.x=-0.55;
     u.armL.rotation.x=-1.05+Math.sin(actionTimer*14)*0.35;
@@ -230,7 +246,7 @@ function swingLimbs(g,t,amp,isRunning=false,mode='walk',actionTimer=0){
     return;
   }
 
-  // Marche / Course / Respiration au repos
+  // Marche / Course / Repos mains libres ou armé
   const s=Math.sin(t)*amp;
   u.legL.rotation.x=s;
   u.legR.rotation.x=-s;
@@ -292,42 +308,29 @@ function buildVehicle(col,type){
     scene.add(g);return g;
   }
 
-  // 1. CHÂSSIS & BAS DE CAISSE (S'ARRÊTE À LA LIGNE DE CAISSE Y = 1.06m POUR NE JAMAIS MASQUER LES VITRES)
   bx(2.04,0.22,4.84,trimMat,0,0.42,0,g);
-  // Bloc central habitacle inférieur
   bx(2.14,0.54,2.30,bodyMat,0,0.79,-0.08,g);
-  // Capot avant profilé légèrement plongeant
   const hood=bx(2.08,0.46,1.42,bodyMat,0,0.76,1.72,g);
   hood.rotation.x=0.05;
-  // Coffre arrière
   bx(2.08,0.50,1.16,bodyMat,0,0.78,-1.78,g);
 
-  // 2. HABITACLE VITRÉ 360° (PARE-BRISE AVANT, LUNETTE ARRIÈRE, VITRES LATÉRALES TOUTES UNIFORMÉMENT TEINTÉES)
   const windows=[];
-  // Pare-brise avant incliné à 34°
   const frontGlass=bx(1.78,0.76,0.07,glassMat,0,1.36,0.92,g);
   frontGlass.rotation.x=-0.56;windows.push(frontGlass);
-  // Lunette arrière inclinée à 36°
   const rearGlass=bx(1.76,0.78,0.07,glassMat,0,1.36,-1.18,g);
   rearGlass.rotation.x=0.58;windows.push(rearGlass);
-  // Vitres latérales gauche & droite
   const sideGlassL=bx(0.06,0.58,1.72,glassMat,-0.94,1.36,-0.13,g);
   const sideGlassR=bx(0.06,0.58,1.72,glassMat,0.94,1.36,-0.13,g);
   windows.push(sideGlassL,sideGlassR);
   g.userData.windows=windows;
 
-  // 3. MONTANTS DE TOIT (A, B, C) & PAVILLON DE TOIT
   bx(1.86,0.09,1.76,bodyMat,0,1.69,-0.13,g);
   for(const sx of[-0.91,0.91]){
-    // Montant A avant
     const pilA=bx(0.08,0.74,0.09,bodyMat,sx,1.36,0.91,g);pilA.rotation.x=-0.56;
-    // Montant B central
     bx(0.08,0.62,0.11,trimMat,sx,1.36,-0.13,g);
-    // Montant C arrière
     const pilC=bx(0.08,0.76,0.10,bodyMat,sx,1.36,-1.17,g);pilC.rotation.x=0.58;
   }
 
-  // 4. CALANDRE, PARE-CHOCS CHROMÉS, RÉTROVISEURS & PLAQUES
   bx(2.18,0.18,0.22,chromeMat,0,0.52,2.45,g);
   bx(2.18,0.18,0.22,chromeMat,0,0.52,-2.42,g);
   bx(1.06,0.24,0.08,trimMat,0,0.76,2.44,g);
@@ -338,14 +341,12 @@ function buildVehicle(col,type){
   bx(0.56,0.13,0.04,0xf8fafc,0,0.56,2.56,g);
   bx(0.56,0.13,0.04,0xfacc15,0,0.56,-2.53,g);
 
-  // 5. PORTIÈRE CONDUCTEUR ARTICULÉE
   const doorL=new THREE.Group();
   doorL.position.set(-1.06,0.79,0.55);
   bx(0.08,0.54,1.24,bodyMat,0,0,-0.62,doorL);
   bx(0.10,0.05,0.22,chromeMat,-0.02,0.16,-1.02,doorL);
   g.add(doorL);g.userData.doorL=doorL;
 
-  // 6. 4 ROUES AVEC JANTES ALLIAGE + PIVOTS DE DIRECTION AVANT
   g.userData.wheels=[];g.userData.steerPivots=[];
   for(const[wx,wz,isFront]of[[-1.04,1.48,true],[1.04,1.48,true],[-1.04,-1.48,false],[1.04,-1.48,false]]){
     const pivot=new THREE.Group();pivot.position.set(wx,0.44,wz);
@@ -359,7 +360,6 @@ function buildVehicle(col,type){
     if(isFront)g.userData.steerPivots.push(pivot);
   }
 
-  // 7. PHARES AVANT, FAISCEAUX & FEUX STOP DYNAMIQUES
   const hlMat=new THREE.MeshBasicMaterial({color:0xfef9c3});
   const brakeMat=new THREE.MeshBasicMaterial({color:0x7f1d1d});
   g.userData.brakeMat=brakeMat;
@@ -388,28 +388,20 @@ function buildVehicle(col,type){
   scene.add(g);return g;
 }
 
-// ===== GÉOMÉTRIE D'UNE PORTE D'ENTRÉE NATURELLE EN BOIS MOULURÉ AVEC CHAMBRANLE, POIGNÉE LAITON & MARCHES
+// ===== PORTE D'ENTRÉE NATURELLE EN BOIS MOULURÉ
 function buildNaturalDoor(G,lx,lz,dHalf,accentCol,interiorType,ox,oz,ds,ds2,enterableDoors){
   const pz=lz+dHalf;
-  // Marches d'entrée en pierre
   bx(3.2,0.14,1.2,0xcbd5e1,lx,0.33,pz+0.6,G);
   bx(2.8,0.14,0.7,0xe2e8f0,lx,0.47,pz+0.35,G);
-  // Chambranle & encadrement en bois sombre
   bx(2.4,3.4,0.28,0x451a03,lx,2.15,pz+0.06,G);
-  // Battant de porte en chêne/acajou
   bx(2.0,3.15,0.22,0x78350f,lx,2.05,pz+0.12,G);
-  // Moulures décoratives de porte
   bx(1.4,1.1,0.25,0x92400e,lx,2.75,pz+0.13,G);
   bx(1.4,1.1,0.25,0x92400e,lx,1.42,pz+0.13,G);
-  // Imposte vitrée au-dessus de la porte
   bx(1.9,0.45,0.24,new THREE.MeshStandardMaterial({color:0xbae6fd,emissive:0xfef08a,emissiveIntensity:0.35}),lx,3.42,pz+0.12,G);
-  // Poignée en laiton doré
   bx(0.12,0.32,0.14,new THREE.MeshStandardMaterial({color:0xfacc15,metalness:0.85,roughness:0.2}),lx+0.72,1.85,pz+0.26,G);
-  // Enseigne discrète au-dessus de l'entrée
   bx(3.4,0.42,0.18,0x0f172a,lx,4.15,pz+0.2,G);
   bx(3.2,0.08,0.20,new THREE.MeshBasicMaterial({color:accentCol}),lx,3.96,pz+0.22,G);
 
-  // Anneau discret au sol pour repérer l'accès
   const pad=new THREE.Mesh(new THREE.RingGeometry(0.95,1.35,28),new THREE.MeshBasicMaterial({color:accentCol,side:THREE.DoubleSide,transparent:true,opacity:0.78}));
   pad.rotation.x=-PI/2;pad.position.set(lx,0.28,pz+1.8);G.add(pad);ds2.push(pad.geometry);
 
@@ -417,7 +409,7 @@ function buildNaturalDoor(G,lx,lz,dHalf,accentCol,interiorType,ox,oz,ds,ds2,ente
   ds.push(doorObj);enterableDoors.push(doorObj);
 }
 
-// ===== GÉNÉRATION DE LA VILLE AVEC ARBRES, PORTES NATURELLES & VITRES CASSABLES
+// ===== GÉNÉRATION DE LA VILLE
 const chunks={},pend=[],PALETTE=[0xf1f5f9,0xfde68a,0xe2e8f0,0xfed7aa,0xdbeafe,0xfecdd3];
 const buildingMats=[],enterableDoors=[],buildingWindows=[];
 
@@ -452,7 +444,6 @@ function createChunk(cx,cz){
   addTree(G,69,40,ds2,true);
   addTree(G,40,11,ds2,false);
 
-  // Lac Municipal (6,5)
   if(cx===6&&cz===5){
     bx(58,0.28,58,0x2e7d32,40,0.14,40,G);
     bx(46,0.32,46,new THREE.MeshStandardMaterial({color:0x0284c7,roughness:0.15,metalness:0.6}),40,0.16,40,G);
@@ -460,7 +451,6 @@ function createChunk(cx,cz){
     scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
   }
 
-  // Monument de la Réunification (4,4)
   if(cx===4&&cz===4){
     bx(56,0.34,56,0x9a4b26,40,0.17,40,G);
     bx(48,0.4,48,0xe2e8f0,40,0.2,40,G);
@@ -475,7 +465,6 @@ function createChunk(cx,cz){
     scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
   }
 
-  // Station-Service & Garage (2,4)
   if(cx===2&&cz===4){
     bx(28,0.34,24,0x475569,25,0.17,25,G);
     bx(20,0.6,14,0xdc2626,25,6.4,25,G);
@@ -490,11 +479,9 @@ function createChunk(cx,cz){
   for(let i=0;i<4;i++){
     const h=hs(cx*11+i,cz*17+i*5),lx=25+(i%2)*30,lz=25+(i>>1)*30,t=h%10,col=PALETTE[h%PALETTE.length];
 
-    // Bâtiment spécial 1 : ARMURERIE TACTIQUE (chunk 3,3 slot 0)
     if(cx===3&&cz===3&&i===0){
       bx(20,8.2,16,0x1e293b,lx,4.36,lz,G);
       bx(20.6,0.8,16.6,0x0f172a,lx,8.6,lz,G);
-      // Vitrine cassable en façade
       const winPane=bx(6.4,2.2,0.15,new THREE.MeshStandardMaterial({color:0x38bdf8,transparent:true,opacity:0.55,roughness:0.1}),lx-5.2,2.1,lz+8.05,G);
       const winObj={mesh:winPane,x:ox+lx-5.2,z:oz+lz+8.05,broken:false};
       ds.push(winObj);buildingWindows.push(winObj);
@@ -504,7 +491,6 @@ function createChunk(cx,cz){
       continue;
     }
 
-    // Bâtiment spécial 2 : SALLE DE SPORT & BOXE (chunk 3,3 slot 1)
     if(cx===3&&cz===3&&i===1){
       bx(20,8.6,16,0x312e81,lx,4.56,lz,G);
       bx(20.6,0.8,16.6,0x1e1b4b,lx,9.0,lz,G);
@@ -517,7 +503,6 @@ function createChunk(cx,cz){
       continue;
     }
 
-    // Bâtiment spécial 3 : RESTAURANT LE MBOA (chunk 4,3 slot 0)
     if(cx===4&&cz===3&&i===0){
       bx(20,7.8,16,0x9a3412,lx,4.16,lz,G);
       bx(20.6,0.8,16.6,0x431407,lx,8.2,lz,G);
@@ -553,7 +538,6 @@ function createChunk(cx,cz){
       if(isHouse){
         const roof=new THREE.Mesh(new THREE.ConeGeometry(11.8,4.6,4),mt(0x881337,0.8));
         roof.rotation.y=PI/4;roof.position.set(lx,ht+2.86,lz);G.add(roof);ds2.push(roof.geometry);
-        // Fenêtre vitrée cassable en rez-de-chaussée
         const winPane=bx(3.2,1.8,0.14,new THREE.MeshStandardMaterial({color:0x38bdf8,transparent:true,opacity:0.55,roughness:0.1}),lx-4.2,2.2,lz+d/2+0.05,G);
         const winObj={mesh:winPane,x:ox+lx-4.2,z:oz+lz+d/2+0.05,broken:false};
         ds.push(winObj);buildingWindows.push(winObj);
