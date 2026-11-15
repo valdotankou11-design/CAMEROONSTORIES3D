@@ -19,7 +19,8 @@ const defaultSave=()=>({
   mag:{pistol:12,smg:30,shotgun:8,rifle:30,sniper:5},
   reserve:{smg:90,shotgun:24,rifle:90,sniper:15},
   px:3*CS+18,pz:3*CS+12,
-  set:{time:'auto',wx:'auto'}
+  set:{time:'auto',wx:'auto'},
+  own:{},rent:{},stats:{}
 });
 let SAVE=defaultSave();
 function loadSave(){
@@ -29,6 +30,7 @@ function loadSave(){
       const parsed=JSON.parse(raw);
       SAVE=Object.assign(defaultSave(),parsed);
       SAVE.set=Object.assign({time:'auto',wx:'auto'},parsed.set||{});
+      SAVE.own=Object.assign({},parsed.own||{});SAVE.rent=Object.assign({},parsed.rent||{});SAVE.stats=Object.assign({},parsed.stats||{});
       if(!SAVE.weapons.includes('fist'))SAVE.weapons.unshift('fist');
       SAVE.mag=Object.assign(defaultSave().mag,parsed.mag||{});
       SAVE.reserve=Object.assign(defaultSave().reserve,parsed.reserve||{});
@@ -1265,7 +1267,7 @@ function updateWeather(dt){
   }
   if(flash>0){flash=Math.max(0,flash-dt*3);hemi.intensity+=flash*1.6;scene.background.lerp(_cw,flash*0.5);}
   const on=wxB.rain>0.05;
-  rainObj.visible=on&&!interiorType;
+  rainObj.visible=on&&(!interiorType||/^estate/.test(interiorType));
   if(on){
     const n=Math.min(RAIN_N,Math.floor(RAIN_N*Math.min(1,wxB.rain*0.65)));
     rainGeo.setDrawRange(0,n*2);
@@ -1623,7 +1625,7 @@ function enterInterior(type,doorObj){
     restaurant:'Restaurant Le Mboa : approche le comptoir pour commander.',
     armory:'Armurerie Tactique : approche le comptoir pour t’équiper.'
   };
-  showToast(labels[type]);
+  if(labels[type])showToast(labels[type]);
 }
 
 function trainOnPunchingBag(){
@@ -2609,7 +2611,7 @@ function update(dt){
   const distMon=Math.hypot(P.x-MON_X,P.z-MON_Z);
   const distGas=Math.hypot(P.x-GAS_X,P.z-GAS_Z);
   const intNames={villa:'INTÉRIEUR · VILLA',gym:'INTÉRIEUR · SALLE DE SPORT',restaurant:'INTÉRIEUR · RESTAURANT LE MBOA',armory:'INTÉRIEUR · ARMURERIE'};
-  $('zone-tag').textContent=interiorType?intNames[interiorType]:distMon<55?'MONUMENT RÉUNIFICATION':distGas<25?'STATION-SERVICE':P.z>4*CS&&P.x<4*CS?'NGOA-EKELLÉ':P.x>=4*CS&&P.z<4*CS?'QUARTIER BASTOS':P.x>=4*CS&&P.z>=4*CS?'MVOG-MBI':'TSINGA · BD 20 MAI';
+  $('zone-tag').textContent=interiorType?(intNames[interiorType]||(window.EX&&EX.intName?EX.intName(interiorType):'INTÉRIEUR')):distMon<55?'MONUMENT RÉUNIFICATION':distGas<25?'STATION-SERVICE':P.z>4*CS&&P.x<4*CS?'NGOA-EKELLÉ':P.x>=4*CS&&P.z<4*CS?'QUARTIER BASTOS':P.x>=4*CS&&P.z>=4*CS?'MVOG-MBI':'TSINGA · BD 20 MAI';
 
   updateEmojiPops(dt);
   witCd=Math.max(0,witCd-dt);
@@ -2638,7 +2640,7 @@ function update(dt){
       else{
         const ncar=findNearestCar(5.8);
         if(ncar)pp=ncar.hasDriver?`🚗 Voler le véhicule — ${touch?'Interagir':'E'}`:`🚗 Monter dans le véhicule — ${touch?'Interagir':'E'}`;
-        else{const nd=nearDoor();if(nd)pp=`${({armory:'🔫 Armurerie',gym:'🥊 Salle de boxe',restaurant:'🍽️ Restaurant',villa:'🏠 Maison'})[nd.type||'villa']} — entrer (${touch?'Interagir':'E'})`;}
+        else{const nd=nearDoor();if(nd)pp=`${({armory:'🔫 Armurerie',gym:'🥊 Salle de boxe',restaurant:'🍽️ Restaurant',villa:'🏠 Maison'})[nd.type||'villa']||(window.EX&&EX.doorName?EX.doorName(nd.type):'🚪 Porte')} — entrer (${touch?'Interagir':'E'})`;}
       }
     }
     const cpe=$('ctx-prompt');

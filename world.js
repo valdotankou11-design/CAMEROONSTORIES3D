@@ -518,9 +518,16 @@ function createChunk(cx,cz){
   addTree(G,69,40,ds2,true);
   addTree(G,40,11,ds2,false);
 
+  if(typeof EXTRAS_CHUNK==='function'&&EXTRAS_CHUNK(cx,cz,G,bs,ds,ds2,ox,oz)){
+    scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
+  }
   if(cx===6&&cz===5){
-    bx(58,0.28,58,0x2e7d32,40,0.14,40,G);
-    bx(46,0.32,46,new THREE.MeshStandardMaterial({color:0x0284c7,roughness:0.15,metalness:0.6}),40,0.16,40,G);
+    gr.visible=false;   // le lac a un vrai fond : on retire la dalle de route
+    const gm=mt(0x2e7d32,0.95,0);
+    bx(58,2,6,gm,40,-0.72,14,G);bx(58,2,6,gm,40,-0.72,66,G);bx(6,2,46,gm,14,-0.72,40,G);bx(6,2,46,gm,66,-0.72,40,G);
+    bx(70,2,9,gm,40,-0.72,4.5,G);bx(70,2,9,gm,40,-0.72,75.5,G);bx(9,2,70,gm,4.5,-0.72,40,G);bx(9,2,70,gm,75.5,-0.72,40,G);
+    bx(46,0.2,46,0xc9b57c,40,-1.6,40,G);bx(46,0.1,46,0x3b6e8a,40,-1.45,40,G);
+    if(typeof makeLakeWater==='function')makeLakeWater(G,ox,oz,ds2);
     for(const[tx,tz]of[[14,14],[66,14],[14,66],[66,66]])addTree(G,tx,tz,ds2,true);
     scene.add(G);chunks[cx+','+cz]={G,bs,ds,ds2};return;
   }
