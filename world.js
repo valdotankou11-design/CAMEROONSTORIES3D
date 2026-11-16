@@ -2,7 +2,7 @@
 const PI=Math.PI,R=Math.random,cl=(v,a,b)=>Math.max(a,Math.min(b,v)),rn=(a,b)=>a+R()*(b-a);
 const hs=(a,b)=>((a*73856093)^(b*19349663))>>>0;
 const angd=(a,b)=>{let d=a-b;while(d>PI)d-=2*PI;while(d<-PI)d+=2*PI;return d};
-const CS=80,NB=10,WS=CS*NB;
+const CS=80,NB=14,WS=CS*NB;
 // Coordonnées des intérieurs isolés
 const IX_VILLA=5000,IZ_VILLA=5000;
 const IX_GYM=5200,IZ_GYM=5000;
@@ -647,11 +647,15 @@ function createChunk(cx,cz){
         bx(3,1.6,3,0x64748b,lx-w/4,ht+1.7,lz-d/4,G);                       // local technique
         cyl(0.07,0.07,4.5,6,0x94a3b8,lx+w/4,ht+3,lz+d/4,G);               // antenne
         bx(w*0.7,0.18,1.4,[0xdc2626,0x2563eb,0x16a34a,0xea580c][h%4],lx,3.6,lz+d/2+0.7,G);  // auvent boutique
+        if(typeof buildingStyle==='function')buildingStyle(G,ds2,h,lx,lz,w,d,ht);
       }
       bs.push([ox+lx-w/2,oz+lz-d/2,ox+lx+w/2,oz+lz+d/2]);
       if(isHouse){
-        const roof=new THREE.Mesh(new THREE.ConeGeometry(11.8,4.6,4),mt(0x881337,0.8));
-        roof.rotation.y=PI/4;roof.position.set(lx,ht+2.86,lz);G.add(roof);ds2.push(roof.geometry);
+        if(typeof houseStyle==='function'&&h%6!==0){houseStyle(G,ds2,h,lx,lz,w,d,ht);}
+        else{
+          const roof=new THREE.Mesh(new THREE.ConeGeometry(11.8,4.6,4),mt(0x881337,0.8));
+          roof.rotation.y=PI/4;roof.position.set(lx,ht+2.86,lz);G.add(roof);ds2.push(roof.geometry);
+        }
         const winPane=bx(3.2,1.8,0.14,new THREE.MeshStandardMaterial({color:0x38bdf8,transparent:true,opacity:0.55,roughness:0.1}),lx-4.2,2.2,lz+d/2+0.05,G);
         const winObj={mesh:winPane,x:ox+lx-4.2,z:oz+lz+d/2+0.05,broken:false};
         ds.push(winObj);buildingWindows.push(winObj);

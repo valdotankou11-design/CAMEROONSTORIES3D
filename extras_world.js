@@ -90,7 +90,7 @@ function makeWater(G,lx,lz,w,d,y,seg,col,ds2,ox,oz,op){
   const rec={x:(ox||0)+lx,z:(oz||0)+lz,w,d,y,mesh:m,geo,seg,G,base:Float32Array.from(geo.attributes.position.array)};
   WATERS.push(rec);return rec;
 }
-function makeLakeWater(G,ox,oz,ds2){makeWater(G,40,40,46,46,0.1,44,0x1c86c5,ds2,ox,oz,0.8);}
+function makeLakeWater(G,ox,oz,ds2){makeWater(G,40,40,46,46,0.1,44,0x1c86c5,ds2,ox,oz,0.8);if(typeof lakeBenches==='function')lakeBenches(G,ox,oz);}
 function waveH(wx,wz,t){return Math.sin(wx*0.35+t*1.3)*0.05+Math.sin(wz*0.5-t*1.7)*0.04+Math.sin((wx+wz)*0.22+t*0.9)*0.05;}
 function waterAt(x,z){
   for(const r of WATERS)if(r.G.parent&&Math.abs(x-r.x)<r.w/2&&Math.abs(z-r.z)<r.d/2)return r;
@@ -294,6 +294,7 @@ function sportsChunk(G,bs,ds,ds2,ox,oz){
 
 function EXTRAS_CHUNK(cx,cz,G,bs,ds,ds2,ox,oz){
   const k=cx+','+cz;
+  if(typeof DISTRICT_CHUNK==='function'&&DISTRICT_CHUNK(cx,cz,G,bs,ds,ds2,ox,oz))return true;
   if(ESTATE_AT[k]){estateExterior(ESTATE_AT[k],G,bs,ds,ds2,ox,oz);return true;}
   if(cz===0&&cx<=2){airportChunk(cx,G,bs,ds,ds2,ox,oz);return true;}
   if(k==='4,1'){agencyChunk(G,bs,ds,ds2,ox,oz);return true;}

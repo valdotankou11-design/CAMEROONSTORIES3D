@@ -579,6 +579,7 @@ function drawBigMap(){
     {x:0,z:4*CS,w:4*CS,h:6*CS,col:'rgba(120,53,15,0.24)',name:'NGOA-EKELLÉ · UNIVERSITÉ'},
     {x:4*CS,z:4*CS,w:6*CS,h:6*CS,col:'rgba(88,28,135,0.22)',name:'MVOG-MBI · CENTRE SUD'}
   ];
+  if(typeof EXTRA_ZONES!=='undefined')for(const z of EXTRA_ZONES)zones.push(z);
   for(const z of zones){
     ctx.fillStyle=z.col;
     ctx.fillRect(z.x*S2,z.z*S2,z.w*S2,z.h*S2);
@@ -2611,7 +2612,7 @@ function update(dt){
   const distMon=Math.hypot(P.x-MON_X,P.z-MON_Z);
   const distGas=Math.hypot(P.x-GAS_X,P.z-GAS_Z);
   const intNames={villa:'INTÉRIEUR · VILLA',gym:'INTÉRIEUR · SALLE DE SPORT',restaurant:'INTÉRIEUR · RESTAURANT LE MBOA',armory:'INTÉRIEUR · ARMURERIE'};
-  $('zone-tag').textContent=interiorType?(intNames[interiorType]||(window.EX&&EX.intName?EX.intName(interiorType):'INTÉRIEUR')):distMon<55?'MONUMENT RÉUNIFICATION':distGas<25?'STATION-SERVICE':P.z>4*CS&&P.x<4*CS?'NGOA-EKELLÉ':P.x>=4*CS&&P.z<4*CS?'QUARTIER BASTOS':P.x>=4*CS&&P.z>=4*CS?'MVOG-MBI':'TSINGA · BD 20 MAI';
+  $('zone-tag').textContent=interiorType?(intNames[interiorType]||(window.EX&&EX.intName?EX.intName(interiorType):'INTÉRIEUR')):distMon<55?'MONUMENT RÉUNIFICATION':distGas<25?'STATION-SERVICE':((window.zoneNameExt&&zoneNameExt(P.x,P.z))||(P.z>4*CS&&P.x<4*CS?'NGOA-EKELLÉ':P.x>=4*CS&&P.z<4*CS?'QUARTIER BASTOS':(P.x>=4*CS&&P.z>=4*CS?'MVOG-MBI':'TSINGA · BD 20 MAI')));
 
   updateEmojiPops(dt);
   witCd=Math.max(0,witCd-dt);
