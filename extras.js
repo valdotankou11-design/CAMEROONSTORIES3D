@@ -284,7 +284,7 @@ function buildEstate(t){
   B3(root,PW,0.2,PD,M.tile,px,-1.5,pz);
   for(const s of[-1,1]){B3(root,PW,1.6,0.12,M.tile,px,-0.7,pz+s*PD/2);B3(root,0.12,1.6,PD,M.tile,px+s*PW/2,-0.7,pz);}
   const pool=makeWater(root,px,pz,PW,PD,0.0,Math.max(12,Math.round(PW*1.6)),0x39b6e5,null,0,0,0.78);
-  pool.pool=true;EXS.pools=EXS.pools||[];
+  pool.pool=true;pool.keep=true;EXS.pools=EXS.pools||[];
   // margelle visible autour
   B3(root,PW+1.4,0.16,0.5,M.stone,px,0.12,hzt-0.25);B3(root,PW+1.4,0.16,0.5,M.stone,px,0.12,hzb+0.25);B3(root,0.5,0.16,PD+1,M.stone,hxl-0.25,0.12,pz);B3(root,0.5,0.16,PD+1,M.stone,hxr+0.25,0.12,pz);
   // échelle chromée
@@ -401,6 +401,7 @@ function buildEstate(t){
   const cfg={ix:ix,iz:iz,w:W,d:D,obs:obs};
   INTERIORS['estate'+t]=cfg;
   estateBuilt[t]={root,cfg,spots,pool,tv:null};
+  if(window.POPULATE)POPULATE('estate'+t,root,cfg);
   return estateBuilt[t];
 }
 
@@ -517,6 +518,7 @@ function buildAgency(){
   chandelier(g,ix,4.5,iz,1.8);chandelier(g,ix-8,4.6,iz+2,1.2);chandelier(g,ix+8,4.6,iz+2,1.2);
   plant(g,ix-12,iz-8,1.6);plant(g,ix+12,iz-8,1.6);
   INTERIORS.agency={ix:ix,iz:iz,w:W,d:D,obs:obs};
+  if(window.DECORATE)DECORATE('agency',g,INTERIORS.agency);
   agency={g,spots:[{x:ix,z:iz-2.6,r:4.2,label:'🏢 Parler à l’agent (catalogue)',key:'catalog'},{x:ix-8,z:iz+3,r:2.6,label:'🚀 Boutique de luxe',key:'catalog'},{x:ix+8,z:iz+3,r:2.6,label:'🎫 Boutique de luxe',key:'catalog'}]};
   return agency;
 }
@@ -567,6 +569,7 @@ function buildSports(){
   for(let i=0;i<8;i++)B3(g,2.4,0.5,0.8,M.leather,ix-20+i*5.6,0.45,iz+D/2-4);
   plant(g,ix-22,iz+11,1.5);plant(g,ix+22,iz+11,1.5);
   INTERIORS.sports={ix:ix,iz:iz,w:W,d:D,obs:obs};
+  if(window.DECORATE)DECORATE('sports',g,INTERIORS.sports);
   sportsHall={g,spots:[
     {x:ix-15,z:iz+2,r:4.5,label:'🏀 Basket 1v1 · 200 FCFA',key:'sp_basket'},
     {x:ix,z:iz+2,r:4.5,label:'🎾 Tennis · 300 FCFA',key:'sp_tennis'},

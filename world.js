@@ -523,9 +523,11 @@ function createChunk(cx,cz){
   }
   if(cx===6&&cz===5){
     gr.visible=false;   // le lac a un vrai fond : on retire la dalle de route
-    const gm=mt(0x2e7d32,0.95,0);
-    bx(58,2,6,gm,40,-0.72,14,G);bx(58,2,6,gm,40,-0.72,66,G);bx(6,2,46,gm,14,-0.72,40,G);bx(6,2,46,gm,66,-0.72,40,G);
-    bx(70,2,9,gm,40,-0.72,4.5,G);bx(70,2,9,gm,40,-0.72,75.5,G);bx(9,2,70,gm,4.5,-0.72,40,G);bx(9,2,70,gm,75.5,-0.72,40,G);
+    const gm=mt(0x2e7d32,0.95,0),as=mt(0x2f3238,0.95,0.02);
+    // routes sur les 4 bords du bloc (sans aucun trou)
+    bx(80,0.14,9,as,40,0.07,4.5,G);bx(80,0.14,9,as,40,0.07,75.5,G);bx(9,0.14,62,as,4.5,0.07,40,G);bx(9,0.14,62,as,75.5,0.07,40,G);
+    // berges : anneau entre 9 et 71 autour du bassin (17..63)
+    bx(62,2,8,gm,40,-0.72,13,G);bx(62,2,8,gm,40,-0.72,67,G);bx(8,2,46,gm,13,-0.72,40,G);bx(8,2,46,gm,67,-0.72,40,G);
     bx(46,0.2,46,0xc9b57c,40,-1.6,40,G);bx(46,0.1,46,0x3b6e8a,40,-1.45,40,G);
     if(typeof makeLakeWater==='function')makeLakeWater(G,ox,oz,ds2);
     for(const[tx,tz]of[[14,14],[66,14],[14,66],[66,66]])addTree(G,tx,tz,ds2,true);
@@ -681,11 +683,12 @@ function removeChunk(k){
   for(const g of c.ds2)g.dispose();
   delete chunks[k];
 }
+let CHUNK_R=2;
 function streamChunks(all,px,pz){
   const pc=cl(Math.floor(px/CS),0,NB-1),pz2=cl(Math.floor(pz/CS),0,NB-1);
-  for(const k in chunks){const[a,b]=k.split(',').map(Number);if(Math.abs(a-pc)>2||Math.abs(b-pz2)>2)removeChunk(k);}
+  for(const k in chunks){const[a,b]=k.split(',').map(Number);if(Math.abs(a-pc)>CHUNK_R||Math.abs(b-pz2)>CHUNK_R)removeChunk(k);}
   pend.length=0;
-  for(let r=0;r<=2;r++)for(let a=pc-r;a<=pc+r;a++)for(let b=pz2-r;b<=pz2+r;b++)
+  for(let r=0;r<=CHUNK_R;r++)for(let a=pc-r;a<=pc+r;a++)for(let b=pz2-r;b<=pz2+r;b++)
     if(a>=0&&b>=0&&a<NB&&b<NB&&!chunks[a+','+b]&&Math.max(Math.abs(a-pc),Math.abs(b-pz2))===r)pend.push([a,b]);
   if(all)while(pend.length){const p=pend.shift();createChunk(p[0],p[1]);}
 }

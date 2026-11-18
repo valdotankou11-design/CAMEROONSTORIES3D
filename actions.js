@@ -3,7 +3,7 @@
 //  ACTIONS DE LA VIE QUOTIDIENNE : s'asseoir, cuisiner, boire, danser, jouer du piano…
 //  Chaque action lance une animation qui se répète + une caméra de cinéma
 //  jusqu'à ce que tu te lèves (joystick, bouton ou touche action).
-//  Mode photo (touche H) : cache toute l'interface pour capturer / filmer.
+//  Mode photo (touche P) : cache toute l'interface pour capturer / filmer.
 // =====================================================================
 (function(){
 const ACT=window.ACT={anchors:{},cur:null,focus:null,active:null,drunkUntil:0};
@@ -59,6 +59,7 @@ let SS=null;
 const DEF={'armL.z':0.05,'armR.z':-0.05};
 const CH=['armL.x','armL.z','armR.x','armR.z','elbowL.x','elbowR.x','legL.x','legL.z','legR.x','legR.z','kneeL.x','kneeR.x','torso.x','torso.y','torso.z','head.x','head.y','head.z','yaw','body.x'];
 function T(n,v){SS.tg[n]=v;}
+const snd=function(){if(SS&&!SS.mute&&typeof playTone==='function')playTone.apply(null,arguments);};
 function phase(t,durs){
   const tot=durs.reduce((a,b)=>a+b,0);let u=t%tot;
   for(let i=0;i<durs.length;i++){if(u<durs[i])return{i:i,k:u/durs[i],u:u};u-=durs[i];}
@@ -74,6 +75,50 @@ function focusYaw(A){
 
 // ---------- POSES (cibles ; le lissage se fait dans apply)
 const POSES={
+  guard(t,A){
+    T('armL.x',-0.8);T('elbowL.x',-2.0);T('armL.z',-0.35);T('armR.x',-0.8);T('elbowR.x',-2.0);T('armR.z',0.35);
+    T('legL.z',0.15);T('legR.z',-0.15);T('head.y',Math.sin(t*0.4)*0.6);T('head.x',0);
+    if(phase(t,[12,1.6]).i===1){T('armL.x',-1.5);T('elbowL.x',-1.6);T('armL.z',0.1);T('head.x',0.5);T('head.y',0);}
+  },
+  talk(t,A){
+    T('armR.x',-0.6+Math.sin(t*2.3)*0.3);T('elbowR.x',-1.1+Math.sin(t*3.1)*0.3);T('armL.x',-0.3+Math.sin(t*1.7)*0.12);T('elbowL.x',-0.6);
+    T('head.y',Math.sin(t*0.8)*0.18);T('head.x',Math.sin(t*2.6)*0.05);T('torso.y',Math.sin(t*0.7)*0.08);T('legL.z',0.08);T('legR.z',-0.08);
+  },
+  write(t,A){
+    T('armL.x',-1.1);T('elbowL.x',-1.3);T('armR.x',-1.0);T('elbowR.x',-1.4+Math.sin(t*8)*0.05);T('head.x',0.35);T('torso.x',0.08);
+    if(phase(t,[7,1.5]).i===1){T('head.x',-0.05);T('head.y',0.4);}
+  },
+  serve(t,A){
+    const p=phase(t,[8,3]);
+    if(p.i===0){T('armL.x',-1.0+Math.sin(t*3)*0.1);T('armR.x',-1.0-Math.sin(t*3)*0.1);T('elbowL.x',-1.2);T('elbowR.x',-1.2);T('head.x',0.3);T('head.y',Math.sin(t*0.5)*0.5);}
+    else{T('armR.x',-1.6);T('elbowR.x',-0.6);T('armL.x',-0.9);T('elbowL.x',-1.1);T('head.x',0.25);T('head.y',0);}
+    T('legL.z',0.1);T('legR.z',-0.1);
+  },
+  mop(t,A){
+    T('torso.x',0.3);T('armL.x',-0.7+Math.sin(t*2)*0.3);T('armR.x',-0.7+Math.sin(t*2)*0.3);T('elbowL.x',-0.5);T('elbowR.x',-0.5);T('head.x',0.3);
+    T('legL.x',Math.sin(t*1.6)*0.3);T('legR.x',-Math.sin(t*1.6)*0.3);SS.slide=Math.sin(t*0.5)*A.range;
+  },
+  browse(t,A){
+    const p=phase(t,[4,2,3]);
+    T('legL.z',0.1);T('legR.z',-0.1);T('head.y',p.i===0?-0.5:0.2);T('head.x',0.15);
+    if(p.i===0){T('armR.x',-0.9+Math.sin(t*3)*0.2);T('armR.z',-0.5);T('elbowR.x',-0.7);T('armL.x',-0.3);}
+    else if(p.i===1){T('armR.x',-1.4);T('elbowR.x',-1.6);T('armR.z',-0.1);T('armL.x',-0.8);T('elbowL.x',-1.0);}
+    else{T('armR.x',-0.4);T('elbowR.x',-0.6);T('armL.x',-0.3);}
+  },
+  mc(t,A){
+    T('armR.x',-1.3);T('elbowR.x',-2.0);T('armR.z',-0.1);T('armL.x',-0.6+Math.sin(t*1.8)*0.5);T('armL.z',0.5+Math.sin(t*1.4)*0.3);T('elbowL.x',-0.6);
+    T('head.y',Math.sin(t*0.6)*0.6);T('head.x',-0.05);SS.slide=Math.sin(t*0.35)*A.range;
+  },
+  type(t,A){
+    T('armL.x',-1.0+Math.sin(t*9)*0.05);T('armR.x',-1.0-Math.sin(t*9)*0.05);T('elbowL.x',-0.7);T('elbowR.x',-0.7);T('head.x',0.3);T('head.y',Math.sin(t*0.3)*0.25);
+  },
+  carry(t,A){
+    T('armL.x',-1.2);T('armR.x',-1.2);T('elbowL.x',-0.9);T('elbowR.x',-0.9);T('armL.z',0.15);T('armR.z',-0.15);T('head.x',0.05);T('torso.x',-0.05);
+  },
+  cower(t,A){
+    T('legL.x',-0.9);T('legR.x',-0.9);T('kneeL.x',1.5);T('kneeR.x',1.5);T('torso.x',0.55);T('armL.x',-2.8);T('armR.x',-2.8);T('elbowL.x',-1.6);T('elbowR.x',-1.6);T('head.x',0.5);
+    T('torso.z',Math.sin(t*30)*0.03);SS.bounce=-0.28;
+  },
   sit(t,A){
     sitBase(0.05);
     const look=Math.sin(t*0.35)*0.45,v=A.variant||'lap';
@@ -89,7 +134,7 @@ const POSES={
       const fy=focusYaw(A),p=phase(t,[8,2.6]);
       T('head.y',fy+Math.sin(t*0.5)*0.08);T('head.x',0.02);T('armL.x',-0.5);T('elbowL.x',-1.1);T('armR.x',-0.5);T('elbowR.x',-1.1);
       if(p.i===1){T('armL.x',-1.3);T('armR.x',-1.3);T('armL.z',0.1);T('armR.z',-0.1);T('elbowL.x',-1.7+Math.sin(t*14)*0.35);T('elbowR.x',-1.7+Math.sin(t*14+0.6)*0.35);
-        if(!SS.cl||t-SS.cl>0.22){SS.cl=t;if(typeof playTone==='function')playTone(900+Math.random()*300,0.03,'square',0.012);}}
+        if(!SS.cl||t-SS.cl>0.22){SS.cl=t;snd(900+Math.random()*300,0.03,'square',0.012);}}
     }else{
       T('armL.x',-0.5);T('elbowL.x',-1.0);T('armR.x',-0.5);T('elbowR.x',-1.0);
       if(phase(t,[10,1.2]).i===1){T('head.y',0);T('torso.x',0.0);T('armL.z',0.4);T('armR.z',-0.4);}
@@ -116,8 +161,8 @@ const POSES={
     const p=phase(t,[1.5,3,2,2.5]);
     if(p.i===0){T('armR.x',-0.85);T('elbowR.x',-1.45);}
     else if(p.i===1){T('armR.x',-1.7);T('elbowR.x',-2.15);T('head.x',-0.28);
-      if(SS.lastDrink!==Math.floor(t/8.99)){SS.lastDrink=Math.floor(t/8.99);SS.drinks=(SS.drinks||0)+1;if(typeof playTone==='function')playTone(260,0.14,'sine',0.03,180);
-        if(SS.drinks===3){ACT.drunkUntil=now()+75;if(typeof showToast==='function')showToast('🍻 Trois bières… tout tourne un peu !');}}}
+      if(SS.lastDrink!==Math.floor(t/8.99)){SS.lastDrink=Math.floor(t/8.99);SS.drinks=(SS.drinks||0)+1;snd(260,0.14,'sine',0.03,180);
+        if(SS.drinks===3&&!SS.actor){ACT.drunkUntil=now()+75;if(typeof showToast==='function')showToast('🍻 Trois bières… tout tourne un peu !');}}}
     else if(p.i===2){T('armR.x',-0.6);T('elbowR.x',-1.3);T('head.y',Math.sin(p.k*3.2)*0.8);}
     else{T('armR.x',-0.7+Math.sin(t*4)*0.25);T('elbowR.x',-1.0);T('head.y',Math.sin(t*1.3)*0.3);}
   },
@@ -125,7 +170,7 @@ const POSES={
     T('torso.x',0.2);T('head.x',0.38);T('legL.z',0.08);T('legR.z',-0.08);
     const p=phase(t,[6,6,3]);SS.cookPh=p.i;
     if(p.i===0){T('armL.x',-1.15);T('elbowL.x',-0.7);T('armR.x',-0.95+Math.sin(t*10)*0.1);T('elbowR.x',-1.0-0.45*(0.5+0.5*Math.sin(t*10)));
-      const c=Math.sin(t*10);if(c>0.9&&(!SS.ch2||t-SS.ch2>0.3)){SS.ch2=t;if(typeof playTone==='function')playTone(380,0.03,'square',0.03);}}
+      const c=Math.sin(t*10);if(c>0.9&&(!SS.ch2||t-SS.ch2>0.3)){SS.ch2=t;snd(380,0.03,'square',0.03);}}
     else if(p.i===1){T('armR.x',-1.2+Math.cos(t*3.5)*0.15);T('armR.z',-0.1+Math.sin(t*3.5)*0.2);T('elbowR.x',-0.8);T('armL.x',-0.5);T('armL.z',0.5);T('elbowL.x',-1.2);T('head.x',0.3);}
     else{T('armR.x',-1.6);T('elbowR.x',-1.85);T('head.x',-0.05);T('armL.x',-0.4);T('armL.z',0.4);T('elbowL.x',-1.2);}
   },
@@ -141,7 +186,7 @@ const POSES={
     sitBase(0.12);
     T('armL.x',-1.2+Math.sin(t*7)*0.07);T('armR.x',-1.2+Math.sin(t*7+1.7)*0.07);T('elbowL.x',-0.55);T('elbowR.x',-0.55);T('armL.z',0.2);T('armR.z',-0.2);
     T('torso.x',0.12+Math.sin(t*1.3)*0.06);T('head.x',0.15+Math.sin(t*0.9)*0.1);T('head.z',Math.sin(t*1.3)*0.08);
-    if(!SS.ln||t-SS.ln>0.28){SS.ln=t;const sc=[261.6,293.7,329.6,392,440,523.3,587.3];if(typeof playTone==='function')playTone(sc[(Math.random()*sc.length)|0],0.55,'sine',0.032);}
+    if(!SS.ln||t-SS.ln>0.28){SS.ln=t;const sc=[261.6,293.7,329.6,392,440,523.3,587.3];snd(sc[(Math.random()*sc.length)|0],0.55,'sine',0.032);}
   },
   lie(t,A){
     T('body.x',-Math.PI/2);T('armL.x',-2.5);T('armL.z',0.9);T('armR.x',-2.5);T('armR.z',-0.9);T('elbowL.x',-1.8);T('elbowR.x',-1.8);
@@ -171,7 +216,7 @@ const POSES={
   cue(t,A){
     T('torso.x',0.85);T('legL.z',0.2);T('legR.z',-0.2);T('legL.x',0.25);T('legR.x',-0.35);
     T('armL.x',-1.5);T('elbowL.x',-0.2);T('armR.x',-0.9+Math.sin(t*3)*0.35);T('elbowR.x',-0.7+Math.sin(t*3)*0.35);T('head.x',-0.5);
-    if(Math.sin(t*3)>0.97&&(!SS.hit||t-SS.hit>1)){SS.hit=t;if(typeof playTone==='function')playTone(1100,0.04,'square',0.03);}
+    if(Math.sin(t*3)>0.97&&(!SS.hit||t-SS.hit>1)){SS.hit=t;snd(1100,0.04,'square',0.03);}
   },
   dart(t,A){
     const p=phase(t,[2.2,0.5,1.2]);
@@ -179,7 +224,7 @@ const POSES={
     if(p.i===0){T('armR.x',-2.2);T('elbowR.x',-1.8);T('armL.x',-0.4);T('torso.x',-0.05);T('head.y',-0.2);}
     else if(p.i===1){T('armR.x',-1.3);T('elbowR.x',-0.1);T('torso.x',0.12);}
     else{T('armR.x',-0.6);T('elbowR.x',-0.6);T('head.y',0.2);}
-    if(p.i===1&&!SS.thr){SS.thr=1;if(typeof playTone==='function')playTone(700,0.05,'square',0.03);}if(p.i===0)SS.thr=0;
+    if(p.i===1&&!SS.thr){SS.thr=1;snd(700,0.05,'square',0.03);}if(p.i===0)SS.thr=0;
   }
 };
 
@@ -208,8 +253,8 @@ function addHandProp(u,hand,g,rx){
   const el=hand==='R'?u.elbowR:u.elbowL;g.position.set(0,-0.36,0.03);if(rx)g.rotation.x=rx;el.add(g);SS.props.push({g:g,par:el});return g;
 }
 function addWorldProp(g,x,y,z,ry){g.position.set(x,y,z);g.rotation.y=ry||0;scene.add(g);SS.props.push({g:g,par:scene});return g;}
-function makeProps(A){
-  const u=P.m.userData,k=A.kind,v=A.variant,fx=Math.sin(A.face),fz=Math.cos(A.face),rx=-Math.cos(A.face),rz=Math.sin(A.face);
+function makeProps(A,rig){
+  const u=(rig||P.m).userData,k=A.kind,v=A.variant,fx=Math.sin(A.face),fz=Math.cos(A.face),rx=-Math.cos(A.face),rz=Math.sin(A.face);
   if(k==='bar'){addHandProp(u,'R',bottle());}
   else if(k==='sofa'||k==='fire'||(k==='sit'&&v==='lap')){addHandProp(u,'R',mug(0xf8fafc));}
   else if(k==='sit'&&v==='phone'){addHandProp(u,'R',phoneProp());}
@@ -218,6 +263,9 @@ function makeProps(A){
   else if(k==='curl'){addHandProp(u,'L',dumbbell());addHandProp(u,'R',dumbbell());}
   else if(k==='cue'){const c=cueProp();addHandProp(u,'R',c);}
   else if(k==='dart'){addHandProp(u,'R',dartProp());}
+  else if(k==='mc'){const mic=new THREE.Group();cyl(0.012,0.012,0.14,6,0x111827,0,-0.08,0,mic);const hd=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),mt(0xcbd5e1,0.3,0.8));hd.position.y=-0.16;mic.add(hd);addHandProp(u,'R',mic);}
+  else if(k==='write'){const cb=new THREE.Group();bx(0.22,0.01,0.3,0xb98a55,0,-0.02,0.05,cb);bx(0.2,0.012,0.27,0xf8fafc,0,0,0.05,cb);addHandProp(u,'L',cb);}
+  else if(k==='carry'){const box=new THREE.Group();bx(0.34,0.26,0.34,0xb98a55,0,0.42,0.38,box);u.torso.add(box);SS.props.push({g:box,par:u.torso});}
   else if(k==='cook'){
     const ks=knifeSpoon();addHandProp(u,'R',ks);SS.ks=ks;
     const y=(A.surfY||1.0)+0.02,px=A.x+fx*0.55,pz=A.z+fz*0.55;
@@ -229,8 +277,8 @@ function makeProps(A){
 function removeProps(){for(const p of SS.props){try{p.par.remove(p.g);}catch(e){}}SS.props=[];}
 
 // ---------- ANIMATION : application sur le squelette
-function applyRig(dt){
-  const u=P.m.userData,k=Math.min(1,dt*7);
+function applyRig(dt,rig){
+  const u=(rig||P.m).userData,k=Math.min(1,dt*7);
   for(const c of CH){
     if(SS.tg[c]===undefined)SS.tg[c]=DEF[c]||0;
     if(SS.ch[c]===undefined)SS.ch[c]=DEF[c]||0;
@@ -239,17 +287,19 @@ function applyRig(dt){
   const c=SS.ch;
   u.armL.rotation.x=c['armL.x'];u.armL.rotation.z=c['armL.z'];u.armR.rotation.x=c['armR.x'];u.armR.rotation.z=c['armR.z'];
   u.elbowL.rotation.x=c['elbowL.x'];u.elbowR.rotation.x=c['elbowR.x'];
-  u.legL.rotation.x=c['legL.x'];u.legL.rotation.z=c['legL.z'];u.legR.rotation.x=c['legR.x'];u.legR.rotation.z=c['legR.z'];
-  u.kneeL.rotation.x=c['kneeL.x'];u.kneeR.rotation.x=c['kneeR.x'];
+  if(!SS.walk){
+    u.legL.rotation.x=c['legL.x'];u.legL.rotation.z=c['legL.z'];u.legR.rotation.x=c['legR.x'];u.legR.rotation.z=c['legR.z'];
+    u.kneeL.rotation.x=c['kneeL.x'];u.kneeR.rotation.x=c['kneeR.x'];
+  }
   u.torso.rotation.x=c['torso.x'];u.torso.rotation.y=c['torso.y'];u.torso.rotation.z=c['torso.z'];
   u.torso.position.z=-0.88*Math.sin(c['torso.x']);u.torso.position.y=0;u.torso.position.x=0;
-  u.head.rotation.x=c['head.x'];u.head.rotation.y=c['head.y'];u.head.rotation.z=c['head.z'];
+  u.head.rotation.x=c['head.x'];u.head.rotation.y=c['head.y']+(SS.look||0);u.head.rotation.z=c['head.z'];
   u.gun.visible=false;
 }
-function resetRig(){
-  const u=P.m.userData;
+function resetRig(rig){
+  const u=(rig||P.m).userData;
   for(const o of[u.torso,u.head,u.legL,u.legR,u.kneeL,u.kneeR,u.armL,u.armR,u.elbowL,u.elbowR]){o.rotation.set(0,0,0);}
-  u.torso.position.set(0,0,0);P.m.rotation.x=0;P.m.rotation.z=0;
+  u.torso.position.set(0,0,0);(rig||P.m).rotation.x=0;(rig||P.m).rotation.z=0;
 }
 
 // ---------- DÉMARRAGE / ARRÊT
@@ -257,7 +307,7 @@ function nearAnchor(){
   if(P.car||P.enteringCar)return null;
   const list=interiorType?(ACT.anchors[interiorType]||[]):(typeof WORLD_ANCHORS!=='undefined'?WORLD_ANCHORS:[]);
   let best=null,bd=1.55;
-  for(const a of list){const d=Math.hypot(P.x-a.x,P.z-a.z);if(d<bd){bd=d;best=a;}}
+  for(const a of list){if(a.taken)continue;const d=Math.hypot(P.x-a.x,P.z-a.z);if(d<bd){bd=d;best=a;}}
   return best;
 }
 ACT.near=nearAnchor;
@@ -277,7 +327,7 @@ function start(a){
   makeProps(a);
   document.body.classList.add('cutscene');
   const u=$a('sit-ui');if(u)u.style.display='flex';
-  if(typeof playTone==='function')playTone(520,0.08,'sine',0.03);
+  snd(520,0.08,'sine',0.03);
 }
 function insideObs(cfg,x,z){
   if(!cfg)return false;
@@ -340,6 +390,58 @@ function cinema(dt){
   if(ACT.drunkUntil>now())cam.rotation.z=Math.sin(SS.t*1.4)*0.05;
 }
 
+
+function poseStep(dt,mesh){
+    const a=SS.a,K=a.kind,pose=POSES[K==='fire'?'fire':K];
+    SS.bounce=0;SS.slide=0;
+    if(pose)pose(SS.t,a);
+    const standing=!!SS.stand;
+    // hauteur & position
+    const floorY=a.floorY!==undefined?a.floorY:0.16;
+    const ty=standing?floorY:((a.seatY!==undefined?a.seatY:0.5)-0.86+0.03);
+    let tyy=ty;
+    if(K==='lie'||K==='lounge'){tyy=(a.seatY||0.6)+0.1;}
+    SS.dyT+=(tyy+SS.bounce-SS.dyT)*Math.min(1,dt*6);
+    applyRig(dt,mesh);
+    const m=mesh;
+    if(m===P.m)m.visible=true;
+    const bk=SS.ch['body.x'];m.rotation.x=bk;
+    const f=Math.sin(a.face),g=Math.cos(a.face);
+    const off=(K==='lie'||K==='lounge')?(-bk/(Math.PI/2))*0.9:0;
+    const rxv=Math.cos(a.face),rzv=-Math.sin(a.face),sl=(SS.slide||0),fo=(SS.fwdOff||0);
+    const bx0=a.x+f*(off+fo)+rxv*sl,bz0=a.z+g*(off+fo)+rzv*sl;
+    const k=Math.min(1,dt*5);
+    SS.x+=(bx0-SS.x)*k;SS.z+=(bz0-SS.z)*k;
+    m.position.set(SS.x,SS.dyT,SS.z);
+    m.rotation.y=a.face+SS.ch['yaw'];
+    // accessoires animés
+    if(SS.ks){const ph=SS.cookPh||0;SS.ks.userData.k.visible=ph===0;SS.ks.userData.s.visible=ph!==0;}
+    if(SS.potPos&&SS.cookPh===1&&Math.random()<dt*14&&typeof trs!=='undefined'){trs.push({m:bx(0.1,0.1,0.1,0xf1f5f9,SS.potPos.x+(Math.random()-0.5)*0.1,SS.potPos.y,SS.potPos.z+(Math.random()-0.5)*0.1),t:0.7,gr:1});}
+    if(ACT.fireMats&&ACT.fireMats.length){const fl=0.5+0.5*Math.sin(SS.t*11)*Math.sin(SS.t*7.3);for(const fm of ACT.fireMats)fm.color.setRGB(1,0.35+0.35*fl,0.05+0.1*fl);}
+}
+
+
+// ---------- API ACTEURS (figurants animés avec le même moteur d'animations)
+ACT.newSession=function(a,mesh,opts){
+  const sess={a:a,t:Math.random()*30,ch:{},tg:{},props:[],shot:0,shotT:0,type:a.type,x:mesh.position.x,z:mesh.position.z,raw:0,dyT:mesh.position.y,bounce:0,drinks:0,actor:true,mute:true,
+    stand:!!(KINDS[a.kind]&&KINDS[a.kind].stand)||['guard','talk','write','serve','mop','browse','mc','type','carry','cower'].indexOf(a.kind)>=0};
+  const prev=SS;SS=sess;try{makeProps(a,mesh);}finally{SS=prev;}
+  return sess;
+};
+ACT.stepActor=function(sess,mesh,dt){
+  const prev=SS;SS=sess;
+  try{
+    sess.t+=dt;
+    const k=sess.a.kind;
+    poseStep(dt,mesh);
+  }finally{SS=prev;}
+};
+ACT.endSession=function(sess,mesh){const prev=SS;SS=sess;try{removeProps();}finally{SS=prev;}resetRig(mesh);};
+ACT.setKind=function(sess,mesh,kind,variant){
+  if(sess.a.kind===kind&&sess.a.variant===variant)return;
+  const prev=SS;SS=sess;try{removeProps();sess.tg={};sess.a=Object.assign({},sess.a,{kind:kind,variant:variant});sess.stand=!!(KINDS[kind]&&KINDS[kind].stand)||['guard','talk','write','serve','mop','browse','mc','type','carry','cower'].indexOf(kind)>=0;makeProps(sess.a,mesh);}finally{SS=prev;}
+};
+
 // ---------- BOUCLE
 let _gi=getInput;
 getInput=function(){
@@ -359,32 +461,8 @@ const postReal=guardA('post',function(dt){
     if(P.car||interiorType!==SS.type||EX.isModal()){stop(true);return;}
     SS.t+=dt;
     if(SS.t>0.7&&SS.raw>0.55){stop();return;}
-    const a=SS.a,K=a.kind,pose=POSES[K==='fire'?'fire':K];
-    SS.bounce=0;
-    if(pose)pose(SS.t,a);
-    const standing=!!SS.stand;
-    // hauteur & position
-    const floorY=a.floorY!==undefined?a.floorY:0.16;
-    const ty=standing?floorY:((a.seatY!==undefined?a.seatY:0.5)-0.86+0.03);
-    let tyy=ty;
-    if(K==='lie'||K==='lounge'){tyy=(a.seatY||0.6)+0.1;}
-    SS.dyT+=(tyy+SS.bounce-SS.dyT)*Math.min(1,dt*6);
-    applyRig(dt);
-    const m=P.m;
-    m.visible=true;
-    const bk=SS.ch['body.x'];m.rotation.x=bk;
-    const f=Math.sin(a.face),g=Math.cos(a.face);
-    const off=(K==='lie'||K==='lounge')?(-bk/(Math.PI/2))*0.9:0;
-    const bx0=a.x+f*off,bz0=a.z+g*off;
-    const k=Math.min(1,dt*5);
-    SS.x+=(bx0-SS.x)*k;SS.z+=(bz0-SS.z)*k;
-    m.position.set(SS.x,SS.dyT,SS.z);
-    m.rotation.y=a.face+SS.ch['yaw'];
-    P.x=a.x;P.z=a.z;
-    // accessoires animés
-    if(SS.ks){const ph=SS.cookPh||0;SS.ks.userData.k.visible=ph===0;SS.ks.userData.s.visible=ph!==0;}
-    if(SS.potPos&&SS.cookPh===1&&Math.random()<dt*14&&typeof trs!=='undefined'){trs.push({m:bx(0.1,0.1,0.1,0xf1f5f9,SS.potPos.x+(Math.random()-0.5)*0.1,SS.potPos.y,SS.potPos.z+(Math.random()-0.5)*0.1),t:0.7,gr:1});}
-    if(ACT.fireMats&&ACT.fireMats.length){const fl=0.5+0.5*Math.sin(SS.t*11)*Math.sin(SS.t*7.3);for(const fm of ACT.fireMats)fm.color.setRGB(1,0.35+0.35*fl,0.05+0.1*fl);}
+    poseStep(dt,P.m);
+    P.x=SS.a.x;P.z=SS.a.z;
     cinema(dt);
     return;
   }
@@ -447,10 +525,10 @@ $a('sit-cam').onclick=()=>{if(SS){SS.shot++;SS.shotT=0;}};
 function togglePhoto(){document.body.classList.toggle('photo');}
 pe.onclick=togglePhoto;
 ACT.photo=togglePhoto;
-window.addEventListener('keydown',e=>{if(e.code==='KeyH'&&!e.repeat)togglePhoto();if(e.code==='KeyV'&&SS&&!e.repeat){SS.shot++;SS.shotT=0;}});
+window.addEventListener('keydown',e=>{if(e.code==='KeyP'&&!e.repeat)togglePhoto();if(e.code==='KeyV'&&SS&&!e.repeat){SS.shot++;SS.shotT=0;}});
 (function(){
   const row=document.getElementById('btn-how');
   if(row&&row.parentNode){const b=document.createElement('button');b.className='bt ghost';b.textContent='📸 MODE PHOTO';b.onclick=()=>{togglePhoto();};row.parentNode.appendChild(b);}
 })();
-console.log('[ACTIONS] chargé : asseoir, cuisiner, boire, danser, piano, bronzer, haltères… + mode photo (H).');
+console.log('[ACTIONS] chargé : asseoir, cuisiner, boire, danser, piano, bronzer, haltères… + mode photo (P).');
 })();

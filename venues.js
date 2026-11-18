@@ -41,7 +41,6 @@ function buildHospital(){
   F.B3(g,W-1,0.2,0.1,mt(0x0ea5e9,0.5,0),ix,1.6,iz-D/2+0.3);
   // accueil
   F.B3(g,6.4,1.1,1.3,F.M.white,ix-9,0.8,iz-8);F.B3(g,6.6,0.07,1.5,F.MARBLE_S,ix-9,1.4,iz-8);ob(obs,ix-9,iz-8,6.6,1.6);
-  npc(g,'hospital',ix-9,iz-9.3,0,0x38bdf8,0x7b5438,'student','Infirmière Ngo','Bonjour ! Prenez un ticket, le docteur vous reçoit tout de suite.');
   // salle d'attente (chairs 'sit' phone)
   for(let i=0;i<6;i++)F.chair(g,ix-11+i*1.15,iz+3.0,Math.PI,mt(0x0ea5e9,0.8,0),'phone');
   ob(obs,ix-8.2,iz+3,7.2,0.9);
@@ -54,7 +53,6 @@ function buildHospital(){
   // distributeur
   F.B3(g,1.1,2.1,0.9,F.M.black,ix+14.5,1.2,iz+2);F.B3(g,0.8,1.2,0.05,F.EMI(0x7dd3fc),ix+14.5,1.5,iz+1.52);ob(obs,ix+14.5,iz+2,1.3,1.1);
   // médecin
-  npc(g,'hospital',ix+2,iz-8.6,0,0xf8fafc,0x6f4e37,'student','Dr Mballa','Je vous examine... Allongez-vous. 300 FCFA et vous repartez comme neuf.');
   F.B3(g,2.4,0.8,1.0,F.M.white,ix+2,0.55,iz-7.3);ob(obs,ix+2,iz-7.3,2.6,1.2);
   // croix murale
   F.B3(g,1.6,0.4,0.1,F.EMI(0xdc2626),ix,3.4,iz-D/2+0.4);F.B3(g,0.4,1.6,0.1,F.EMI(0xdc2626),ix,3.4,iz-D/2+0.4);
@@ -64,6 +62,7 @@ function buildHospital(){
     {x:ix+14.5,z:iz+3.2,r:2.2,label:'🥤 Distributeur · 100 FCFA',key:'vend'}
   ];
   reg('hospital',ix,iz,W,D,obs,spots,'HÔPITAL GÉNÉRAL','🏥 Hôpital Général');
+  if(window.DECORATE)DECORATE('hospital',g,INTERIORS.hospital);if(window.POPULATE)POPULATE('hospital',g,INTERIORS.hospital);
   built.hospital=1;
 }
 SPOT_HANDLERS.heal=()=>{
@@ -96,7 +95,6 @@ function buildMaquis(){
   for(let i=0;i<7;i++){const sx=bx0-7.5+i*2.5;stool(g,sx,iz-6.6);ACT.reg('maquis',{kind:'bar',x:sx,z:iz-6.6,face:Math.PI,seatY:0.98,cost:150,label:'🍺 Commander une bière',type:'maquis'});}
   F.B3(g,19,2.6,0.4,F.M.walnut,bx0,2.2,iz-D/2+0.8);
   for(let r=0;r<3;r++)bottleRow(g,bx0,1.7+r*0.7,iz-D/2+1.1,17);
-  npc(g,'maquis',bx0,iz-9.6,0,0xf97316,0x6f4e37,'student','Tonton','Une bière bien fraîche ? 150 FCFA, assieds-toi au comptoir et profite !');
   for(let k=0;k<3;k++)F.B3(g,0.8,0.5,0.6,mt(0xdc2626,0.7,0),ix+13+k*0.0,0.45+k*0.5,iz-10+0);
   // tables + chaises (manger)
   for(let t=0;t<4;t++){
@@ -120,6 +118,7 @@ function buildMaquis(){
   ACT.end();F.setFY(0.18);
   const spots=[{x:ix+W/2-2.6,z:iz+4,r:2.4,label:'🎶 Jukebox : changer de musique',key:'juke'}];
   reg('maquis',ix,iz,W,D,obs,spots,'MAQUIS CHEZ TONTON','🍺 Maquis Chez Tonton');
+  if(window.DECORATE)DECORATE('maquis',g,INTERIORS.maquis);if(window.POPULATE)POPULATE('maquis',g,INTERIORS.maquis);
   built.maquis=1;
 }
 SPOT_HANDLERS.juke=()=>{
@@ -189,7 +188,6 @@ function buildCabaret(){
   for(let i=0;i<5;i++){const sx=ix-13+i*2.5;stool(g,sx,iz+D/2-4.6,F.M.red);ACT.reg('cabaret',{kind:'bar',x:sx,z:iz+D/2-4.6,face:0,seatY:0.98,cost:250,label:'🍸 Commander un cocktail',type:'cabaret',focus:null});}
   // piste de danse
   for(let k=0;k<4;k++)ACT.reg('cabaret',{kind:'dance',x:ix-4+k*2.6,z:iz+8,face:Math.PI,type:'cabaret',label:'💃 Danser devant la scène',focus:null});
-  const bar=npc(g,'cabaret',ix-8,iz+D/2-1.7,Math.PI,0x111827,0x6f4e37,'student','Barman','Cocktail maison ? 250 FCFA. Installez-vous au bar.');
   F.plant(g,ix-21,iz+13,1.8);F.plant(g,ix+21,iz+13,1.8);
   F.chandelier(g,ix-10,4.6,iz+6,1.2);F.chandelier(g,ix+10,4.6,iz+6,1.2);
   ACT.end();F.setFY(0.18);
@@ -198,6 +196,7 @@ function buildCabaret(){
     {x:ix+W/2-5.6,z:iz+5,r:3.0,label:'🍾 Champagne en loge VIP · 500 FCFA',key:'champ'}
   ];
   reg('cabaret',ix,iz,W,D,obs,spots,'LE MOULIN DORÉ · CABARET','💃 Le Moulin Doré (cabaret)');
+  if(window.DECORATE)DECORATE('cabaret',g,INTERIORS.cabaret);if(window.POPULATE)POPULATE('cabaret',g,INTERIORS.cabaret);
   built.cabaret=1;
 }
 SPOT_HANDLERS.tip=()=>{
@@ -307,11 +306,11 @@ function buildBoutique(){
     ACT.reg('boutique',{kind:'pose',x:mxx,z:iz+D/2-3,face:Math.PI,type:'boutique',floorY:0.23,label:'🪞 Essayer des poses'});}
   // comptoir
   F.B3(g,6,1.1,1.2,F.M.white,ix+10,0.8,iz+7);F.B3(g,6.2,0.07,1.4,F.MARBLE_S,ix+10,1.4,iz+7);ob(obs,ix+10,iz+7,6.2,1.5);
-  npc(g,'boutique',ix+10,iz+5.8,Math.PI,0x111827,0x6f4e37,'student','Vendeuse','Bienvenue chez Style Avenue ! Choisis ta tenue et tes accessoires.');
   F.chandelier(g,ix,4.6,iz,1.5);F.plant(g,ix-14,iz+9,1.5);
   ACT.end();F.setFY(0.18);
   const spots=[{x:ix+10,z:iz+3.8,r:3.2,label:'👕 Voir les tenues & accessoires',key:'wardrobe'}];
   reg('boutique',ix,iz,W,D,obs,spots,'STYLE AVENUE · MODE','🛍️ Mvog Mall · Style Avenue');
+  if(window.DECORATE)DECORATE('boutique',g,INTERIORS.boutique);if(window.POPULATE)POPULATE('boutique',g,INTERIORS.boutique);
   built.boutique=1;
 }
 SPOT_HANDLERS.wardrobe=()=>outfitMenu();
@@ -362,6 +361,7 @@ function buildHome(type){
     {x:modern?ix-5.5:ix+8.2,z:iz-D/2+3,r:2.4,label:'🧊 Se servir (frigo · soigne)',key:'fridge'}
   ];
   reg(type,ix,iz,W,D,obs,spots,modern?'APPARTEMENT MODERNE':'MAISON COSY','🏠 Maison');
+  if(window.DECORATE)DECORATE(type,g,INTERIORS[type]);if(window.POPULATE)POPULATE(type,g,INTERIORS[type]);
   built[type]=1;
 }
 
@@ -379,6 +379,7 @@ function buildHome(type){
 // =====================================================================
 const _eiV=enterInterior;
 enterInterior=function(type,doorObj){
+  if(window.EX_BAN&&EX_BAN[type]&&EX_BAN[type]>performance.now()/1000){showToast('La sécurité t’interdit l’entrée pour le moment.');return;}
   try{
     if(type==='villa'&&doorObj){
       const h=(Math.floor(Math.abs(doorObj.x)*7.3+Math.abs(doorObj.z)*3.7))%3;

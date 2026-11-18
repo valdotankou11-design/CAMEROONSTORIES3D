@@ -10,6 +10,7 @@ function _tex(c,rx,ry){const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.
 
 // ---------- textures procédurales (marbre, parquet, tapis, tableaux, herbe, terrains)
 const TX={};
+const _txMemo=(f)=>{const c={};return function(){const k=JSON.stringify(Array.prototype.slice.call(arguments));return c[k]||(c[k]=f.apply(null,arguments));};};
 TX.marble=(rx)=>{
   const c=_cv(256,256),x=c.getContext('2d');
   x.fillStyle='#ece8e1';x.fillRect(0,0,256,256);
@@ -74,12 +75,14 @@ TX.sign=(txt,bg,fg)=>{
   x.fillStyle=fg;x.font='bold 40px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(txt,256,50);
   return new THREE.CanvasTexture(c);
 };
+TX.sign=_txMemo(TX.sign);
 function _signBoard(G,txt,bg,fg,w,h,x,y,z,ry){
   const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:TX.sign(txt,bg,fg)}));
   m.position.set(x,y,z);m.rotation.y=ry||0;G.add(m);return m;
 }
 
 // ---------- EAU VIVANTE : vagues + ondulations (lac, piscines)
+for(const _k of['marble','parquet','rug','art','grass','basket','tennis','pitch'])TX[_k]=_txMemo(TX[_k]);
 const WATERS=[],RIPPLES=[];
 function addRipple(x,z,amp){RIPPLES.push({x,z,t:0,amp:amp||0.3});if(RIPPLES.length>9)RIPPLES.shift();}
 function makeWater(G,lx,lz,w,d,y,seg,col,ds2,ox,oz,op){
@@ -98,12 +101,14 @@ function waterAt(x,z){
 }
 let _wf=0;
 function updateWaters(dt,t,px,pz){
+  const LQ=window.QUALITY&&window.QUALITY.water===false;
   for(let i=RIPPLES.length-1;i>=0;i--){RIPPLES[i].t+=dt;if(RIPPLES[i].t>4.5)RIPPLES.splice(i,1);}
   _wf++;
   for(let q=WATERS.length-1;q>=0;q--){
     const r=WATERS[q];
-    if(!r.G.parent){WATERS.splice(q,1);continue;}
-    if(Math.hypot(r.x-px,r.z-pz)>r.w*0.5+150)continue;
+    if(!r.G.parent){if(!r.keep)WATERS.splice(q,1);continue;}
+    if(Math.hypot(r.x-px,r.z-pz)>r.w*0.5+(LQ?40:150))continue;
+    if(LQ&&_wf%3!==0)continue;
     const pos=r.geo.attributes.position.array,base=r.base,n=pos.length/3;
     for(let i=0;i<n;i++){
       const wx=r.x+base[i*3],wz=r.z+base[i*3+2];

@@ -53,12 +53,16 @@ function glassMat(kind,w,ht,tint,ds){
 }
 function slab(G,ox,oz,bs,x,z,w,d,col){bx(w,0.3,d,col||0x8b95a3,x,0.15,z,G);}
 function solid(bs,ox,oz,lx,lz,w,d){bs.push([ox+lx-w/2,oz+lz-d/2,ox+lx+w/2,oz+lz+d/2]);}
+const _signCache={};
 function signPlane(G,ds2,txt,bg,fg,w,h,x,y,z,ry,glow){
-  const c=document.createElement('canvas');c.width=512;c.height=Math.round(512*h/w);const g=c.getContext('2d');
-  g.fillStyle=bg;g.fillRect(0,0,c.width,c.height);g.strokeStyle=fg;g.lineWidth=6;g.strokeRect(8,8,c.width-16,c.height-16);
-  g.fillStyle=fg;g.font='bold '+Math.round(c.height*0.4)+'px sans-serif';g.textAlign='center';g.textBaseline='middle';
-  const lines=String(txt).split('|');lines.forEach((l,i)=>g.fillText(l,c.width/2,c.height*(i+1)/(lines.length+1)));
-  const t=new THREE.CanvasTexture(c);
+  const key=[txt,bg,fg,w,h].join('~');let t=_signCache[key];
+  if(!t){
+    const c=document.createElement('canvas');c.width=512;c.height=Math.round(512*h/w);const g=c.getContext('2d');
+    g.fillStyle=bg;g.fillRect(0,0,c.width,c.height);g.strokeStyle=fg;g.lineWidth=6;g.strokeRect(8,8,c.width-16,c.height-16);
+    g.fillStyle=fg;g.font='bold '+Math.round(c.height*0.4)+'px sans-serif';g.textAlign='center';g.textBaseline='middle';
+    const lines=String(txt).split('|');lines.forEach((l,i)=>g.fillText(l,c.width/2,c.height*(i+1)/(lines.length+1)));
+    t=_signCache[key]=new THREE.CanvasTexture(c);
+  }
   const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),glow?new THREE.MeshBasicMaterial({map:t}):new THREE.MeshStandardMaterial({map:t,roughness:0.6}));
   m.position.set(x,y,z);m.rotation.y=ry||0;G.add(m);ds2.push(m.geometry);return m;
 }
